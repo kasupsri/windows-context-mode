@@ -44,18 +44,29 @@ describe('executeCode', () => {
   }, 5000);
 
   it('executes shell commands', async () => {
-    const runtime = getRuntimeForLanguage('shell');
+    const preferredShell = process.platform === 'win32' ? 'cmd' : 'git-bash';
+    const runtime = getRuntimeForLanguage('shell', preferredShell);
     if (!runtime) {
       console.log('Skipping shell test: sh not available on this platform');
       return;
     }
+
+    const code =
+      runtime.runtimeId === 'cmd'
+        ? '@echo off\r\necho shell works'
+        : runtime.runtimeId === 'powershell'
+          ? 'Write-Output "shell works"'
+          : 'printf "shell works\\n"';
+
     const result = await executeCode({
       language: 'shell',
-      code: 'echo "shell works"',
+      code,
+      shellRuntime: preferredShell,
+      timeoutMs: 10_000,
     });
     expect(result.stdout.trim()).toBe('shell works');
     expect(result.exitCode).toBe(0);
-  });
+  }, 15_000);
 
   it('executes Python if available', async () => {
     const runtime = getRuntimeForLanguage('python');
