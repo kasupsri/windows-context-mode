@@ -4,6 +4,7 @@
  */
 
 import { filterByIntent } from './intent-filter.js';
+import { DEFAULT_CONFIG } from '../config/defaults.js';
 
 export type ContentType = 'json' | 'log' | 'code' | 'markdown' | 'csv' | 'generic';
 export type CompressionStrategy = 'auto' | 'truncate' | 'summarize' | 'filter' | 'as-is';
@@ -26,7 +27,7 @@ export interface CompressResult {
 }
 
 const DEFAULT_MAX_CHARS = 8000;
-const THRESHOLD_CHARS = 5120; // ~5KB
+const DEFAULT_THRESHOLD_CHARS = 5120; // ~5KB
 
 // ─── Content Type Detection ──────────────────────────────────────────────────
 
@@ -38,8 +39,8 @@ export function detectContentType(text: string): ContentType {
     return 'json';
   }
 
-  // CSV: consistent delimiter pattern in first few lines
-  const firstLines = trimmed.split('\n').slice(0, 5);
+  // CSV/log detection only needs a handful of lines.
+  const firstLines = takeFirstLines(trimmed, 5);
   if (looksLikeCsv(firstLines)) return 'csv';
 
   // Log: timestamp patterns at line starts
@@ -61,6 +62,50 @@ function isValidJson(text: string): boolean {
   } catch {
     return false;
   }
+}
+
+function takeFirstLines(text: string, maxLines: number): string[] {
+  if (maxLines <= 0 || !text) return [];
+
+  const lines: string[] = [];
+  let start = 0;
+
+  while (lines.length < maxLines) {
+    const newlineIdx = text.indexOf('\n', start);
+    if (newlineIdx === -1) {
+      lines.push(text.slice(start));
+      break;
+    }
+    lines.push(text.slice(start, newlineIdx));
+    start = newlineIdx + 1;
+  }
+
+  return lines;
+}
+
+function clampToMaxChars(text: string, maxChars: number): string {
+  return text.length > maxChars ? text.slice(0, maxChars) : text;
+}
+
+function resolveMaxOutputChars(maxOutputChars?: number): number {
+  if (typeof maxOutputChars === 'number' && Number.isFinite(maxOutputChars) && maxOutputChars > 0) {
+    return Math.floor(maxOutputChars);
+  }
+
+  const configured = DEFAULT_CONFIG.compression.maxOutputBytes;
+  if (Number.isFinite(configured) && configured > 0) {
+    return Math.floor(configured);
+  }
+
+  return DEFAULT_MAX_CHARS;
+}
+
+function resolveThresholdChars(): number {
+  const configured = DEFAULT_CONFIG.compression.thresholdBytes;
+  if (Number.isFinite(configured) && configured > 0) {
+    return Math.floor(configured);
+  }
+  return DEFAULT_THRESHOLD_CHARS;
 }
 
 function looksLikeCsv(lines: string[]): boolean {
@@ -152,8 +197,7 @@ function summarizeJson(value: unknown, maxChars: number, depth = 0): string {
     lines.push(JSON.stringify(value) ?? 'null');
   }
 
-  const result = lines.join('\n');
-  return result.length > maxChars ? result.slice(0, maxChars) : result;
+  return clampToMaxChars(lines.join('\n'), maxChars);
 }
 
 function getJsonType(value: unknown): string {
@@ -235,8 +279,7 @@ function compressLog(text: string, maxChars: number, intent?: string): string {
     result.push(...unique.slice(0, 20).map(l => `  ${l.slice(0, 150)}`));
   }
 
-  const output = result.join('\n');
-  return output.length > maxChars ? output.slice(0, maxChars) : output;
+  return clampToMaxChars(result.join('\n'), maxChars);
 }
 
 function compressCode(text: string, maxChars: number, intent?: string): string {
@@ -307,8 +350,7 @@ function compressCode(text: string, maxChars: number, intent?: string): string {
     result.push(line);
   }
 
-  const output = result.join('\n');
-  return output.length > maxChars ? output.slice(0, maxChars) : output;
+  return clampToMaxChars(result.join('\n'), maxChars);
 }
 
 function compressMarkdown(text: string, maxChars: number, intent?: string): string {
@@ -353,8 +395,7 @@ function compressMarkdown(text: string, maxChars: number, intent?: string): stri
     }
   }
 
-  const output = result.join('\n').trim();
-  return output.length > maxChars ? output.slice(0, maxChars) : output;
+  return clampToMaxChars(result.join('\n').trim(), maxChars);
 }
 
 function compressCsv(text: string, maxChars: number, intent?: string): string {
@@ -405,8 +446,7 @@ function compressCsv(text: string, maxChars: number, intent?: string): string {
     }
   }
 
-  const output = result.join('\n');
-  return output.length > maxChars ? output.slice(0, maxChars) : output;
+  return clampToMaxChars(result.join('\n'), maxChars);
 }
 
 function computeCsvStats(
@@ -417,18 +457,26 @@ function computeCsvStats(
   const stats: Array<{ column: string; min: number; max: number; avg: number }> = [];
 
   for (let colIdx = 0; colIdx < columns.length; colIdx++) {
-    const values: number[] = [];
+    let count = 0;
+    let min = Number.POSITIVE_INFINITY;
+    let max = Number.NEGATIVE_INFINITY;
+    let sum = 0;
+
     for (const row of rows) {
       const cells = row.split(delimiter);
       const cell = cells[colIdx]?.trim() ?? '';
       const num = parseFloat(cell);
-      if (!isNaN(num)) values.push(num);
+      if (!isNaN(num)) {
+        count++;
+        sum += num;
+        if (num < min) min = num;
+        if (num > max) max = num;
+      }
     }
-    if (values.length > rows.length * 0.5) {
+
+    if (count > rows.length * 0.5) {
       // mostly numeric
-      const min = Math.min(...values);
-      const max = Math.max(...values);
-      const avg = values.reduce((s, v) => s + v, 0) / values.length;
+      const avg = count > 0 ? sum / count : 0;
       stats.push({ column: columns[colIdx] ?? `col${colIdx}`, min, max, avg });
     }
   }
@@ -448,24 +496,37 @@ function genericTruncate(
   const totalLines = lines.length;
 
   if (lines.length <= headLines + tailLines) {
-    return text.length > maxChars ? text.slice(0, maxChars) : text;
+    return clampToMaxChars(text, maxChars);
   }
 
   const head = lines.slice(0, headLines).join('\n');
   const tail = lines.slice(-tailLines).join('\n');
   const omitted = totalLines - headLines - tailLines;
 
-  return `${head}\n\n... [${omitted} lines omitted] ...\n\n${tail}`;
+  const omissionMarker = `... [${omitted} lines omitted] ...`;
+  const candidate = `${head}\n\n${omissionMarker}\n\n${tail}`;
+  if (candidate.length <= maxChars) return candidate;
+
+  const available = maxChars - omissionMarker.length - 4; // separator newlines
+  if (available <= 0) return clampToMaxChars(omissionMarker, maxChars);
+
+  const headBudget = Math.ceil(available * 0.6);
+  const tailBudget = Math.max(0, available - headBudget);
+  const compactHead = clampToMaxChars(head, headBudget);
+  const compactTail = tailBudget > 0 ? tail.slice(Math.max(0, tail.length - tailBudget)) : '';
+  return clampToMaxChars(`${compactHead}\n\n${omissionMarker}\n\n${compactTail}`, maxChars);
 }
 
 // ─── Main compress function ───────────────────────────────────────────────────
 
 export function compress(text: string, options: CompressOptions = {}): CompressResult {
-  const maxOutputChars = options.maxOutputChars ?? DEFAULT_MAX_CHARS;
+  const maxOutputChars = resolveMaxOutputChars(options.maxOutputChars);
+  const thresholdChars = resolveThresholdChars();
   const inputChars = text.length;
+  const shouldCompressForBudget = inputChars > maxOutputChars;
 
   // Skip compression if below threshold
-  if (inputChars < THRESHOLD_CHARS && !options.intent) {
+  if (inputChars < thresholdChars && !options.intent && !shouldCompressForBudget) {
     return {
       output: text,
       strategy: 'as-is',
@@ -526,6 +587,8 @@ export function compress(text: string, options: CompressOptions = {}): CompressR
     default:
       output = text;
   }
+
+  output = clampToMaxChars(output, maxOutputChars);
 
   const outputChars = output.length;
   const savedPercent =

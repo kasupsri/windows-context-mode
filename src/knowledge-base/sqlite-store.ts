@@ -31,6 +31,19 @@ interface SqlJsStatic {
   Database: new (data?: ArrayLike<number> | Buffer | null) => SqlJsDatabase;
 }
 
+interface StoredChunkRow {
+  source: string;
+  heading: string;
+  content: string;
+  kb_name: string;
+}
+
+interface CachedDoc {
+  row: StoredChunkRow;
+  tokens: string[];
+  headingTerms: Set<string>;
+}
+
 // sql.js lazy loader
 let _sqlJs: SqlJsStatic | null = null;
 
@@ -48,6 +61,7 @@ export class SqliteStore {
   private dbPath: string;
   private initialized = false;
   private initPromise: Promise<void> | null = null;
+  private searchCache = new Map<string, CachedDoc[]>();
 
   constructor(dbPath?: string) {
     this.dbPath = dbPath ?? DEFAULT_CONFIG.knowledgeBase.dbPath;
@@ -99,6 +113,49 @@ export class SqliteStore {
     }
   }
 
+  private invalidateSearchCache(kbName?: string): void {
+    if (kbName) {
+      this.searchCache.delete(kbName);
+      return;
+    }
+    this.searchCache.clear();
+  }
+
+  private loadRowsForKnowledgeBase(kbName: string): StoredChunkRow[] {
+    const stmt = this.db.prepare(
+      'SELECT source, heading, content, kb_name FROM chunks WHERE kb_name = ?'
+    );
+    stmt.bind([kbName]);
+
+    const rows: StoredChunkRow[] = [];
+    while (stmt.step()) {
+      const row = stmt.getAsObject();
+      rows.push({
+        source: String(row['source'] ?? ''),
+        heading: String(row['heading'] ?? ''),
+        content: String(row['content'] ?? ''),
+        kb_name: String(row['kb_name'] ?? kbName),
+      });
+    }
+    stmt.free();
+    return rows;
+  }
+
+  private getCachedDocs(kbName: string): CachedDoc[] {
+    const cached = this.searchCache.get(kbName);
+    if (cached) return cached;
+
+    const rows = this.loadRowsForKnowledgeBase(kbName);
+    const docs = rows.map(row => ({
+      row,
+      tokens: tokenize(`${row.content} ${row.heading}`),
+      headingTerms: new Set(tokenize(row.heading)),
+    }));
+
+    this.searchCache.set(kbName, docs);
+    return docs;
+  }
+
   async insertChunks(
     chunks: Array<{ content: string; heading: string }>,
     source: string,
@@ -132,6 +189,7 @@ export class SqliteStore {
       stmt.free();
     }
 
+    this.invalidateSearchCache(kbName);
     this.persist();
     return chunks.length;
   }
@@ -139,94 +197,85 @@ export class SqliteStore {
   async search(query: string, kbName = 'default', topK = 5): Promise<SearchResult[]> {
     await this.ensureInitialized();
 
-    const stmt = this.db.prepare(
-      'SELECT source, heading, content, kb_name FROM chunks WHERE kb_name = ?'
-    );
-    stmt.bind([kbName]);
+    const docs = this.getCachedDocs(kbName);
+    if (docs.length === 0) return [];
 
-    const rows: Array<{ source: string; heading: string; content: string; kb_name: string }> = [];
-    while (stmt.step()) {
-      const row = stmt.getAsObject() as {
-        source: string;
-        heading: string;
-        content: string;
-        kb_name: string;
-      };
-      rows.push(row);
-    }
-    stmt.free();
-
-    if (rows.length === 0) return [];
-
-    const scored = this.bm25Score(query, rows);
+    const scored = this.bm25Score(query, docs);
 
     return scored.slice(0, topK).map(r => ({
-      source: r.row.source,
-      heading: r.row.heading,
-      snippet: this.extractSnippet(r.row.content, query),
+      source: r.doc.row.source,
+      heading: r.doc.row.heading,
+      snippet: this.extractSnippet(r.doc.row.content, query),
       score: r.score,
-      kbName: r.row.kb_name,
+      kbName: r.doc.row.kb_name,
     }));
   }
 
-  private bm25Score(
-    query: string,
-    rows: Array<{ source: string; heading: string; content: string; kb_name: string }>
-  ): Array<{ row: (typeof rows)[0]; score: number }> {
-    const queryTerms = tokenize(query);
+  private bm25Score(query: string, docs: CachedDoc[]): Array<{ doc: CachedDoc; score: number }> {
+    const queryTerms = Array.from(new Set(tokenize(query)));
     if (queryTerms.length === 0) return [];
+    const queryTermSet = new Set(queryTerms);
 
-    const N = rows.length;
+    const N = docs.length;
     const k1 = 1.5;
     const b = 0.75;
 
-    const docTokens = rows.map(r => tokenize(r.content + ' ' + r.heading));
-    const avgLen = docTokens.reduce((s, t) => s + t.length, 0) / Math.max(N, 1);
+    const avgLen = docs.reduce((sum, doc) => sum + doc.tokens.length, 0) / Math.max(N, 1);
 
     // Document frequency for each query term
     const df = new Map<string, number>();
-    for (const tokens of docTokens) {
-      const unique = new Set(tokens);
-      for (const t of unique) {
-        if (queryTerms.includes(t)) df.set(t, (df.get(t) ?? 0) + 1);
+    for (const doc of docs) {
+      const uniqueQueryTerms = new Set<string>();
+      for (const token of doc.tokens) {
+        if (queryTermSet.has(token)) {
+          uniqueQueryTerms.add(token);
+        }
+      }
+      for (const term of uniqueQueryTerms) {
+        df.set(term, (df.get(term) ?? 0) + 1);
       }
     }
 
-    const scored = rows.map((row, i) => {
-      const tokens = docTokens[i] ?? [];
-      const docLen = tokens.length;
+    const scored: Array<{ doc: CachedDoc; score: number }> = [];
+    for (const doc of docs) {
+      const docLen = doc.tokens.length;
 
       const tf = new Map<string, number>();
-      for (const t of tokens) tf.set(t, (tf.get(t) ?? 0) + 1);
+      for (const token of doc.tokens) {
+        if (queryTermSet.has(token)) {
+          tf.set(token, (tf.get(token) ?? 0) + 1);
+        }
+      }
+      if (tf.size === 0) continue;
 
       let score = 0;
-      for (const qt of queryTerms) {
-        const termTf = tf.get(qt) ?? 0;
+      for (const queryTerm of queryTerms) {
+        const termTf = tf.get(queryTerm) ?? 0;
         if (termTf === 0) continue;
 
-        const termDf = df.get(qt) ?? 0;
+        const termDf = df.get(queryTerm) ?? 0;
         const idf = Math.log((N - termDf + 0.5) / (termDf + 0.5) + 1);
         const tfNorm =
           (termTf * (k1 + 1)) / (termTf + k1 * (1 - b + b * (docLen / Math.max(avgLen, 1))));
         score += idf * tfNorm;
       }
+      if (score <= 0) continue;
 
       // Boost heading matches
-      const headingTerms = new Set(tokenize(row.heading));
-      for (const qt of queryTerms) {
-        if (headingTerms.has(qt)) {
+      for (const queryTerm of queryTerms) {
+        if (doc.headingTerms.has(queryTerm)) {
           score *= 1.5;
           break;
         }
       }
 
-      return { row, score };
-    });
+      scored.push({ doc, score });
+    }
 
-    return scored.sort((a, b) => b.score - a.score).filter(s => s.score > 0);
+    return scored.sort((a, b) => b.score - a.score);
   }
 
-  private extractSnippet(content: string, query: string, maxLen = 300): string {
+  private extractSnippet(content: string, query: string, maxLen = 240): string {
     const queryWords = query.toLowerCase().split(/\s+/);
     const contentLower = content.toLowerCase();
 
@@ -251,6 +300,7 @@ export class SqliteStore {
     const stmt = this.db.prepare('DELETE FROM chunks WHERE kb_name = ?');
     stmt.run([kbName]);
     stmt.free();
+    this.invalidateSearchCache(kbName);
     this.persist();
     logger.info('Knowledge base cleared', { kbName });
   }
@@ -281,6 +331,7 @@ export class SqliteStore {
 
   close(): void {
     if (this.initialized) {
+      this.invalidateSearchCache();
       this.persist();
       this.db.close();
     }

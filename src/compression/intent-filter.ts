@@ -126,6 +126,10 @@ function computeTfIdf(
   queryTerms: string[],
   chunks: Array<{ content: string; heading: string }>
 ): ScoredChunk[] {
+  if (queryTerms.length === 0 || chunks.length === 0) return [];
+
+  const querySet = new Set(queryTerms);
+
   // Build corpus term frequencies
   const chunkTokens = chunks.map(c => tokenize(c.content + ' ' + c.heading));
   const n = chunks.length;
@@ -133,31 +137,40 @@ function computeTfIdf(
   // IDF: log(N / (1 + df))
   const df: Map<string, number> = new Map();
   for (const tokens of chunkTokens) {
-    const unique = new Set(tokens);
-    for (const t of unique) {
-      df.set(t, (df.get(t) ?? 0) + 1);
+    const uniqueQueryTerms = new Set<string>();
+    for (const token of tokens) {
+      if (querySet.has(token)) {
+        uniqueQueryTerms.add(token);
+      }
+    }
+    for (const term of uniqueQueryTerms) {
+      df.set(term, (df.get(term) ?? 0) + 1);
     }
   }
 
   const scored: ScoredChunk[] = chunks.map((chunk, i) => {
     const tokens = chunkTokens[i] ?? [];
     const tf: Map<string, number> = new Map();
-    for (const t of tokens) {
-      tf.set(t, (tf.get(t) ?? 0) + 1);
+    for (const token of tokens) {
+      if (querySet.has(token)) {
+        tf.set(token, (tf.get(token) ?? 0) + 1);
+      }
     }
 
     let score = 0;
-    for (const qt of queryTerms) {
-      const termTf = (tf.get(qt) ?? 0) / Math.max(tokens.length, 1);
-      const termDf = df.get(qt) ?? 0;
+    const tokenCount = Math.max(tokens.length, 1);
+    for (const queryTerm of queryTerms) {
+      const termTf = (tf.get(queryTerm) ?? 0) / tokenCount;
+      if (termTf === 0) continue;
+      const termDf = df.get(queryTerm) ?? 0;
       const idf = Math.log((n + 1) / (termDf + 1)) + 1;
       score += termTf * idf;
     }
 
     // Boost if heading contains query terms
     const headingTokens = new Set(tokenize(chunk.heading));
-    for (const qt of queryTerms) {
-      if (headingTokens.has(qt)) {
+    for (const queryTerm of queryTerms) {
+      if (headingTokens.has(queryTerm)) {
         score *= 1.5;
         break;
       }
@@ -166,7 +179,16 @@ function computeTfIdf(
     return { content: chunk.content, heading: chunk.heading, score };
   });
 
-  return scored.sort((a, b) => b.score - a.score);
+  return scored.filter(chunk => chunk.score > 0).sort((a, b) => b.score - a.score);
+}
+
+function looksStructuredMarkdown(text: string): boolean {
+  return (
+    /^#{1,6}\s/m.test(text) ||
+    /^```/m.test(text) ||
+    /^\s*[-*+]\s/m.test(text) ||
+    /^\s*\d+\.\s/m.test(text)
+  );
 }
 
 export function filterByIntent(
@@ -174,21 +196,29 @@ export function filterByIntent(
   intent: string,
   maxOutputChars: number = 8000
 ): string {
+  const queryTerms = Array.from(new Set(tokenize(intent)));
+  if (queryTerms.length === 0) {
+    return text.length > maxOutputChars ? text.slice(0, maxOutputChars) : text;
+  }
+
+  if (!looksStructuredMarkdown(text)) {
+    return filterLinesByIntent(text, queryTerms, maxOutputChars);
+  }
+
   const chunks = chunkMarkdown(text);
   if (chunks.length === 0) {
     // Fall back to line-based chunking for non-markdown content
-    return filterLinesByIntent(text, intent, maxOutputChars);
+    return filterLinesByIntent(text, queryTerms, maxOutputChars);
   }
 
-  const queryTerms = tokenize(intent);
   const scored = computeTfIdf(queryTerms, chunks);
 
   const selected: string[] = [];
   let totalChars = 0;
 
   for (const chunk of scored) {
-    if (totalChars + chunk.content.length > maxOutputChars) break;
     const section = chunk.heading ? `## ${chunk.heading}\n${chunk.content}` : chunk.content;
+    if (totalChars + section.length > maxOutputChars) continue;
     selected.push(section);
     totalChars += section.length;
   }
@@ -199,18 +229,22 @@ export function filterByIntent(
     return top.content.slice(0, maxOutputChars);
   }
 
-  return selected.join('\n\n');
+  const output = selected.join('\n\n');
+  return output.length > maxOutputChars ? output.slice(0, maxOutputChars) : output;
 }
 
-function filterLinesByIntent(text: string, intent: string, maxOutputChars: number): string {
-  const queryTerms = tokenize(intent);
+function filterLinesByIntent(text: string, queryTerms: string[], maxOutputChars: number): string {
+  if (queryTerms.length === 0) {
+    return text.length > maxOutputChars ? text.slice(0, maxOutputChars) : text;
+  }
+
   const lines = text.split('\n');
 
   const scored = lines.map((line, i) => {
-    const lineTerms = tokenize(line);
+    const lineTerms = new Set(tokenize(line));
     let score = 0;
-    for (const qt of queryTerms) {
-      if (lineTerms.includes(qt)) score++;
+    for (const queryTerm of queryTerms) {
+      if (lineTerms.has(queryTerm)) score++;
     }
     return { line, score, i };
   });
@@ -226,9 +260,11 @@ function filterLinesByIntent(text: string, intent: string, maxOutputChars: numbe
     }
   }
 
-  const resultLines = Array.from(lineIndices)
-    .sort((a, b) => a - b)
-    .map(i => lines[i] ?? '');
+  if (lineIndices.size === 0) {
+    return text.length > maxOutputChars ? text.slice(0, maxOutputChars) : text;
+  }
+
+  const resultLines = Array.from(lineIndices).sort((a, b) => a - b).map(i => lines[i] ?? '');
 
   const result = resultLines.join('\n');
   return result.length > maxOutputChars ? result.slice(0, maxOutputChars) : result;

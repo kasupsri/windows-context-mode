@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { compress, detectContentType } from '../../src/compression/strategies.js';
+import { DEFAULT_CONFIG } from '../../src/config/defaults.js';
 
 // ─── Content Type Detection ────────────────────────────────────────────────
 
@@ -155,6 +156,27 @@ Log all exceptions.
     expect(result.output).toContain('Line 1:');
     expect(result.output).toContain('Line 500:');
     expect(result.output).toContain('omitted');
+  });
+
+  it('compresses when max output budget is lower than threshold', () => {
+    const text = 'Line with repeated content\n'.repeat(120); // ~3KB, below default threshold
+    const result = compress(text, { maxOutputChars: 500 });
+
+    expect(result.strategy).not.toBe('as-is');
+    expect(result.outputChars).toBeLessThanOrEqual(500);
+  });
+
+  it('uses configured threshold from runtime config', () => {
+    const originalThreshold = DEFAULT_CONFIG.compression.thresholdBytes;
+    try {
+      DEFAULT_CONFIG.compression.thresholdBytes = 10_000;
+      const text = 'x'.repeat(6000);
+      const result = compress(text);
+      expect(result.strategy).toBe('as-is');
+      expect(result.output).toBe(text);
+    } finally {
+      DEFAULT_CONFIG.compression.thresholdBytes = originalThreshold;
+    }
   });
 
   it('compresses CSV with stats', () => {
