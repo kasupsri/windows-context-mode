@@ -28,30 +28,7 @@ Most context-management MCP servers are Linux-first. This project is built for W
 
 ## Installation
 
-### Option 1: Use from npm (recommended)
-
-#### Cursor setup
-
-```powershell
-npx -y windows-context-mode setup cursor
-```
-
-#### Codex CLI setup
-
-```powershell
-codex mcp add context-mode -- npx -y windows-context-mode
-codex mcp list
-```
-
-If you do not use `codex` CLI, add this to `%USERPROFILE%\.codex\config.toml`:
-
-```toml
-[mcp_servers.context-mode]
-command = "npx"
-args = ["-y", "windows-context-mode"]
-```
-
-### Option 2: Run from source
+### Recommended: Run from source (local path)
 
 ```powershell
 git clone https://github.com/kasupsri/windows-context-mode.git
@@ -61,10 +38,75 @@ npm run build
 npm run doctor
 ```
 
-Then register the built server with your MCP client using:
+Register the built server with your MCP client:
 
-- command: `node`
-- args: `["<absolute-path>/dist/index.js"]`
+- command: `node` (or full path to `node.exe`)
+- args: `["<absolute-path>\\dist\\index.js"]`
+
+#### Cursor local-path example (`.cursor/mcp.json`)
+
+```json
+{
+  "mcpServers": {
+    "context-mode": {
+      "command": "node",
+      "args": ["C:\\Work\\Kasup\\windows-context-mode\\dist\\index.js"]
+    }
+  }
+}
+```
+
+#### Cursor merged example (with other MCP servers)
+
+```json
+{
+  "mcpServers": {
+    "MCP_DOCKER": {
+      "command": "docker",
+      "args": ["mcp", "gateway", "run"],
+      "env": {
+        "LOCALAPPDATA": "C:\\Users\\<you>\\AppData\\Local",
+        "ProgramData": "C:\\ProgramData",
+        "ProgramFiles": "C:\\Program Files"
+      }
+    },
+    "context7": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "mcp/context7"]
+    },
+    "context-mode": {
+      "command": "node",
+      "args": ["C:\\Work\\Kasup\\windows-context-mode\\dist\\index.js"]
+    }
+  }
+}
+```
+
+#### Codex local-path example (`%USERPROFILE%\\.codex\\config.toml`)
+
+```toml
+[mcp_servers.context-mode]
+command = "C:\\Program Files\\nodejs\\node.exe"
+args = ["C:\\Work\\Kasup\\windows-context-mode\\dist\\index.js"]
+```
+
+If `node` is already in PATH for your IDE, you can use:
+
+```toml
+[mcp_servers.context-mode]
+command = "node"
+args = ["C:\\Work\\Kasup\\windows-context-mode\\dist\\index.js"]
+```
+
+### Optional: Use npm package (if published)
+
+```powershell
+npx -y windows-context-mode setup cursor
+codex mcp add context-mode -- npx -y windows-context-mode
+codex mcp list
+```
+
+If `npx -y windows-context-mode` returns `npm ERR! 404 Not Found`, switch to the local-path setup above.
 
 ## One-Command Bootstrap (Windows)
 
