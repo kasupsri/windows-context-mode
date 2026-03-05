@@ -8,17 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- Rewrote project documentation for Windows-first setup and operations.
-- Expanded README with installation paths, environment variables, security modes, and diagnostics.
-- Updated contribution guide and issue templates to reference this repository and current workflows.
+- Breaking rename from `windows-context-mode` to `context-mode-universal` (package name, repository URLs, setup templates, and server metadata).
+- Expanded shell runtime model to `auto`, `powershell`, `cmd`, `git-bash`, `bash`, `zsh`, and `sh`.
+- Added OS-aware auto shell fallback order for Windows/macOS/Linux.
+- Renamed environment variables from `WCM_*` to `CMU_*`.
+- Rewrote README/HOW_IT_WORKS/CONTRIBUTING and issue templates for cross-platform usage.
+- Updated diagnostics, stats headers, and fetch User-Agent branding to `context-mode-universal`.
+- Expanded CI test matrix to run on Windows, macOS, and Linux (Node 20 and 22).
 
-### Removed
-- Deleted unused markdown template files under `templates/` that were not used by runtime setup flow.
+### Added
+- POSIX bootstrap script (`setup.sh`) with feature parity flags to `setup.ps1`.
+- OS-aware security rules for strict/balanced policy modes (Windows + POSIX destructive command patterns).
 
 ## [0.1.0] - 2026-03-04
 
 ### Added
-- Initial `windows-context-mode` release.
+- Initial `context-mode-universal` release.
 - MCP tools: `execute`, `execute_file`, `index`, `search`, `fetch_and_index`, `compress`, `proxy`, `stats_get`, `stats_reset`, `stats_export`, `doctor`.
 - Windows-first shell runtime strategy with fallback (`PowerShell -> cmd -> Git Bash`).
 - Configurable policy modes: `strict`, `balanced`, `permissive`.

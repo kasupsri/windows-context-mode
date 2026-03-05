@@ -169,7 +169,7 @@ class StatsTracker {
   formatSessionStatsText(): string {
     const stats = this.getSessionStats();
     const lines = [
-      '=== Windows Context Mode Session Stats ===',
+      '=== Context Mode Universal Session Stats ===',
       `Responses processed: ${stats.responsesProcessed}`,
       `Responses changed: ${stats.responsesChanged}`,
       `Budget-forced responses: ${stats.budgetForced}`,

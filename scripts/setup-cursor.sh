@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Setup windows-context-mode for Cursor
+# Setup context-mode-universal for Cursor
 set -euo pipefail
 
-npx -y windows-context-mode setup cursor
+npx -y context-mode-universal setup cursor

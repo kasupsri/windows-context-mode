@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# windows-context-mode — Claude Code one-liner installer
+# context-mode-universal — Claude Code one-liner installer
 set -euo pipefail
 
-echo "Installing windows-context-mode for Claude Code..."
+echo "Installing context-mode-universal for Claude Code..."
 
 # Add MCP server
-claude mcp add context-mode -- npx -y windows-context-mode
+claude mcp add context-mode -- npx -y context-mode-universal
 
 echo ""
 echo "✓ context-mode installed!"

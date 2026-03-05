@@ -17,14 +17,14 @@ const MCP_CONFIG = (pkg: string) =>
   );
 
 const CURSOR_RULES = `---
-description: Route all tool outputs through windows-context-mode for minimum-token responses
+description: Route all tool outputs through context-mode-universal for minimum-token responses
 globs: ["**/*"]
 alwaysApply: true
 ---
 
 ## Context Preservation Rules
 
-Use \`windows-context-mode\` MCP tools for substantial tool interactions:
+Use \`context-mode-universal\` MCP tools for substantial tool interactions:
 
 - Prefer \`execute({ language: "shell" })\` for PowerShell-first safe execution
 - Use \`execute_file\` for large local files

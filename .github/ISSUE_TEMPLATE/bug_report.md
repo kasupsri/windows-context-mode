@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a bug in windows-context-mode
+about: Report a bug in context-mode-universal
 title: '[BUG] '
 labels: ['bug']
 assignees: ''
@@ -21,11 +21,11 @@ assignees: ''
 <!-- What actually happens -->
 
 ## Environment
-- windows-context-mode version:
+- context-mode-universal version:
 - Node.js version:
-- Client: (Cursor / Codex / Other)
-- OS: (Windows version/build)
-- Shell: (PowerShell / cmd / Git Bash)
+- Client: (Cursor / Codex / Copilot / Windsurf / Other)
+- OS: (Windows / macOS / Linux + version)
+- Shell/runtime requested: (`auto` / `powershell` / `cmd` / `git-bash` / `bash` / `zsh` / `sh`)
 
 ## Logs / Error Output
 ```

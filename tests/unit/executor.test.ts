@@ -44,7 +44,7 @@ describe('executeCode', () => {
   }, 5000);
 
   it('executes shell commands', async () => {
-    const preferredShell = process.platform === 'win32' ? 'cmd' : 'git-bash';
+    const preferredShell = process.platform === 'win32' ? 'cmd' : 'bash';
     const runtime = getRuntimeForLanguage('shell', preferredShell);
     if (!runtime) {
       console.log('Skipping shell test: sh not available on this platform');

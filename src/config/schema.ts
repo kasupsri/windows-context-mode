@@ -10,6 +10,15 @@ const LOG_LEVELS: ReadonlySet<ContextModeConfig['logging']['level']> = new Set([
   'warn',
   'error',
 ]);
+const SHELL_RUNTIMES: ReadonlySet<ContextModeConfig['sandbox']['shellDefault']> = new Set([
+  'auto',
+  'powershell',
+  'cmd',
+  'git-bash',
+  'bash',
+  'zsh',
+  'sh',
+]);
 
 function asObject(input: unknown): Record<string, unknown> | null {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
@@ -69,81 +78,81 @@ export function parseConfig(input: unknown): ContextModeConfig {
 export function loadConfigFromEnv(): DeepPartial<ContextModeConfig> {
   const config: DeepPartial<ContextModeConfig> = {};
 
-  const maxOutputBytes = parsePositiveInt(process.env['WCM_MAX_OUTPUT_BYTES']);
+  const maxOutputBytes = parsePositiveInt(process.env['CMU_MAX_OUTPUT_BYTES']);
   if (maxOutputBytes !== undefined) {
     config.compression = config.compression ?? {};
     config.compression.maxOutputBytes = maxOutputBytes;
   }
 
-  const timeoutMs = parsePositiveInt(process.env['WCM_TIMEOUT_MS']);
+  const timeoutMs = parsePositiveInt(process.env['CMU_TIMEOUT_MS']);
   if (timeoutMs !== undefined) {
     config.sandbox = config.sandbox ?? {};
     config.sandbox.timeoutMs = timeoutMs;
   }
 
-  const memoryMB = parsePositiveInt(process.env['WCM_MEMORY_MB']);
+  const memoryMB = parsePositiveInt(process.env['CMU_MEMORY_MB']);
   if (memoryMB !== undefined) {
     config.sandbox = config.sandbox ?? {};
     config.sandbox.memoryMB = memoryMB;
   }
 
-  const maxFileBytes = parsePositiveInt(process.env['WCM_MAX_FILE_BYTES']);
+  const maxFileBytes = parsePositiveInt(process.env['CMU_MAX_FILE_BYTES']);
   if (maxFileBytes !== undefined) {
     config.sandbox = config.sandbox ?? {};
     config.sandbox.maxFileBytes = maxFileBytes;
   }
 
-  const allowAuthPassthrough = parseBoolean(process.env['WCM_ALLOW_AUTH_PASSTHROUGH']);
+  const allowAuthPassthrough = parseBoolean(process.env['CMU_ALLOW_AUTH_PASSTHROUGH']);
   if (allowAuthPassthrough !== undefined) {
     config.sandbox = config.sandbox ?? {};
     config.sandbox.allowAuthPassthrough = allowAuthPassthrough;
   }
 
-  if (process.env['WCM_SHELL']) {
+  if (process.env['CMU_SHELL']) {
     config.sandbox = config.sandbox ?? {};
-    const shell = process.env['WCM_SHELL'];
-    if (shell === 'powershell' || shell === 'cmd' || shell === 'git-bash') {
-      config.sandbox.shellDefault = shell;
+    const shell = process.env['CMU_SHELL'];
+    if (shell && SHELL_RUNTIMES.has(shell as ContextModeConfig['sandbox']['shellDefault'])) {
+      config.sandbox.shellDefault = shell as ContextModeConfig['sandbox']['shellDefault'];
     }
   }
 
-  if (process.env['WCM_POLICY_MODE']) {
+  if (process.env['CMU_POLICY_MODE']) {
     config.security = config.security ?? {};
-    const mode = process.env['WCM_POLICY_MODE'];
+    const mode = process.env['CMU_POLICY_MODE'];
     if (mode === 'strict' || mode === 'balanced' || mode === 'permissive') {
       config.security.policyMode = mode;
     }
   }
 
-  const allowPrivateNetworkFetch = parseBoolean(process.env['WCM_ALLOW_PRIVATE_NETWORK_FETCH']);
+  const allowPrivateNetworkFetch = parseBoolean(process.env['CMU_ALLOW_PRIVATE_NETWORK_FETCH']);
   if (allowPrivateNetworkFetch !== undefined) {
     config.security = config.security ?? {};
     config.security.allowPrivateNetworkFetch = allowPrivateNetworkFetch;
   }
 
-  if (process.env['WCM_DB_PATH']) {
+  if (process.env['CMU_DB_PATH']) {
     config.knowledgeBase = config.knowledgeBase ?? {};
-    config.knowledgeBase.dbPath = process.env['WCM_DB_PATH'];
+    config.knowledgeBase.dbPath = process.env['CMU_DB_PATH'];
   }
 
-  const searchTopK = parsePositiveInt(process.env['WCM_SEARCH_TOP_K']);
+  const searchTopK = parsePositiveInt(process.env['CMU_SEARCH_TOP_K']);
   if (searchTopK !== undefined) {
     config.knowledgeBase = config.knowledgeBase ?? {};
     config.knowledgeBase.searchTopK = searchTopK;
   }
 
-  const maxFetchBytes = parsePositiveInt(process.env['WCM_MAX_FETCH_BYTES']);
+  const maxFetchBytes = parsePositiveInt(process.env['CMU_MAX_FETCH_BYTES']);
   if (maxFetchBytes !== undefined) {
     config.knowledgeBase = config.knowledgeBase ?? {};
     config.knowledgeBase.maxFetchBytes = maxFetchBytes;
   }
 
-  if (process.env['WCM_STATS_EXPORT_PATH']) {
+  if (process.env['CMU_STATS_EXPORT_PATH']) {
     config.stats = config.stats ?? {};
-    config.stats.exportPath = process.env['WCM_STATS_EXPORT_PATH'];
+    config.stats.exportPath = process.env['CMU_STATS_EXPORT_PATH'];
   }
 
-  const maxEvents = parsePositiveInt(process.env['WCM_STATS_MAX_EVENTS']);
+  const maxEvents = parsePositiveInt(process.env['CMU_STATS_MAX_EVENTS']);
   if (maxEvents !== undefined) {
     config.stats = config.stats ?? {};
     config.stats.maxEvents = maxEvents;

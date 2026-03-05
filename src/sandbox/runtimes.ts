@@ -2,7 +2,8 @@ import { execSync, execFileSync } from 'child_process';
 import { existsSync } from 'fs';
 import { DEFAULT_CONFIG } from '../config/defaults.js';
 
-export type ShellRuntime = 'powershell' | 'cmd' | 'git-bash';
+export type ShellRuntime = 'auto' | 'powershell' | 'cmd' | 'git-bash' | 'bash' | 'zsh' | 'sh';
+type ConcreteShellRuntime = Exclude<ShellRuntime, 'auto'>;
 
 export type Language =
   | 'javascript'
@@ -32,7 +33,7 @@ export interface Runtime {
   args: (filePath: string) => string[];
   extension: string;
   available: boolean;
-  runtimeId?: ShellRuntime;
+  runtimeId?: ConcreteShellRuntime;
 }
 
 const isWindows = process.platform === 'win32';
@@ -210,81 +211,49 @@ const NON_SHELL_RUNTIMES: Runtime[] = [
   },
 ];
 
-function shellCandidates(preferred: ShellRuntime): ShellRuntime[] {
-  if (preferred === 'cmd') return ['cmd', 'powershell', 'git-bash'];
-  if (preferred === 'git-bash') return ['git-bash', 'powershell', 'cmd'];
-  return ['powershell', 'cmd', 'git-bash'];
+export function autoShellCandidates(
+  platform: NodeJS.Platform = process.platform
+): ConcreteShellRuntime[] {
+  if (platform === 'win32') {
+    return ['powershell', 'cmd', 'git-bash', 'bash', 'sh'];
+  }
+  if (platform === 'darwin') {
+    return ['zsh', 'bash', 'sh', 'powershell'];
+  }
+  return ['bash', 'sh', 'zsh', 'powershell'];
 }
 
-function buildShellRuntime(kind: ShellRuntime): Runtime | null {
-  if (!isWindows) {
-    if (kind === 'git-bash' && commandExists('bash')) {
-      return {
-        language: 'shell',
-        command: 'bash',
-        args: f => [f],
-        extension: 'sh',
-        available: true,
-        runtimeId: 'git-bash',
-      };
-    }
-    if (kind === 'powershell' && detectPowerShellCommand()) {
-      const ps = detectPowerShellCommand();
-      if (!ps) return null;
-      return {
-        language: 'shell',
-        command: ps,
-        args: f => [
-          '-NoLogo',
-          '-NoProfile',
-          '-NonInteractive',
-          '-ExecutionPolicy',
-          'Bypass',
-          '-File',
-          f,
-        ],
-        extension: 'ps1',
-        available: true,
-        runtimeId: 'powershell',
-      };
-    }
-    if (kind === 'cmd') return null;
-    if (commandExists('sh')) {
-      return {
-        language: 'shell',
-        command: 'sh',
-        args: f => [f],
-        extension: 'sh',
-        available: true,
-        runtimeId: 'git-bash',
-      };
-    }
-    return null;
-  }
+function shellCandidates(preferred: ShellRuntime): ConcreteShellRuntime[] {
+  if (preferred === 'auto') return autoShellCandidates();
+  return [preferred];
+}
 
-  if (kind === 'powershell') {
-    const ps = detectPowerShellCommand();
-    if (!ps) return null;
-    return {
-      language: 'shell',
-      command: ps,
-      args: f => [
-        '-NoLogo',
-        '-NoProfile',
-        '-NonInteractive',
-        '-ExecutionPolicy',
-        'Bypass',
-        '-File',
-        f,
-      ],
-      extension: 'ps1',
-      available: true,
-      runtimeId: 'powershell',
-    };
-  }
+function buildPowerShellRuntime(): Runtime | null {
+  const ps = detectPowerShellCommand();
+  if (!ps) return null;
+  return {
+    language: 'shell',
+    command: ps,
+    args: f => [
+      '-NoLogo',
+      '-NoProfile',
+      '-NonInteractive',
+      '-ExecutionPolicy',
+      'Bypass',
+      '-File',
+      f,
+    ],
+    extension: 'ps1',
+    available: true,
+    runtimeId: 'powershell',
+  };
+}
+
+function buildShellRuntime(kind: ConcreteShellRuntime): Runtime | null {
+  if (kind === 'powershell') return buildPowerShellRuntime();
 
   if (kind === 'cmd') {
-    if (!commandExists('cmd')) return null;
+    if (!isWindows || !commandExists('cmd')) return null;
     return {
       language: 'shell',
       command: 'cmd.exe',
@@ -295,15 +264,63 @@ function buildShellRuntime(kind: ShellRuntime): Runtime | null {
     };
   }
 
-  const gitBash = detectGitBashPath();
-  if (!gitBash) return null;
+  if (kind === 'git-bash') {
+    const gitBash = detectGitBashPath();
+    if (!gitBash) return null;
+    return {
+      language: 'shell',
+      command: gitBash,
+      args: f => [isWindows ? f.replace(/\\/g, '/') : f],
+      extension: 'sh',
+      available: true,
+      runtimeId: 'git-bash',
+    };
+  }
+
+  if (kind === 'bash') {
+    if (isWindows) {
+      const bashPath = detectGitBashPath();
+      if (!bashPath) return null;
+      return {
+        language: 'shell',
+        command: bashPath,
+        args: f => [f.replace(/\\/g, '/')],
+        extension: 'sh',
+        available: true,
+        runtimeId: 'bash',
+      };
+    }
+    if (!commandExists('bash')) return null;
+    return {
+      language: 'shell',
+      command: 'bash',
+      args: f => [f],
+      extension: 'sh',
+      available: true,
+      runtimeId: 'bash',
+    };
+  }
+
+  if (kind === 'zsh') {
+    if (!commandExists('zsh')) return null;
+    return {
+      language: 'shell',
+      command: 'zsh',
+      args: f => [f],
+      extension: 'sh',
+      available: true,
+      runtimeId: 'zsh',
+    };
+  }
+
+  if (!commandExists('sh')) return null;
   return {
     language: 'shell',
-    command: gitBash,
-    args: f => [f.replace(/\\/g, '/')],
+    command: 'sh',
+    args: f => [f],
     extension: 'sh',
     available: true,
-    runtimeId: 'git-bash',
+    runtimeId: 'sh',
   };
 }
 
@@ -323,15 +340,17 @@ export function resolveShellRuntime(
   language: Extract<Language, 'shell' | 'powershell' | 'cmd' | 'bash' | 'sh'>,
   preferredShell?: ShellRuntime
 ): Runtime | undefined {
-  let preferred: ShellRuntime;
-  if (language === 'powershell') preferred = 'powershell';
-  else if (language === 'cmd') preferred = 'cmd';
-  else if (language === 'bash' || language === 'sh') preferred = 'git-bash';
-  else preferred = preferredShell ?? DEFAULT_CONFIG.sandbox.shellDefault;
+  if (language === 'powershell') return buildShellRuntime('powershell') ?? undefined;
+  if (language === 'cmd') return buildShellRuntime('cmd') ?? undefined;
+  if (language === 'bash') return buildShellRuntime('bash') ?? undefined;
+  if (language === 'sh') return buildShellRuntime('sh') ?? undefined;
 
+  const preferred = preferredShell ?? DEFAULT_CONFIG.sandbox.shellDefault;
   for (const candidate of shellCandidates(preferred)) {
     const runtime = buildShellRuntime(candidate);
-    if (runtime?.available) return runtime;
+    if (runtime?.available) {
+      return runtime;
+    }
   }
   return undefined;
 }

@@ -9,7 +9,7 @@ export interface ContextModeConfig {
     timeoutMs: number;
     memoryMB: number;
     preferBun: boolean;
-    shellDefault: 'powershell' | 'cmd' | 'git-bash';
+    shellDefault: 'auto' | 'powershell' | 'cmd' | 'git-bash' | 'bash' | 'zsh' | 'sh';
     allowAuthPassthrough: boolean;
     maxFileBytes: number;
   };
@@ -47,7 +47,7 @@ export const DEFAULT_CONFIG: ContextModeConfig = {
     timeoutMs: 30_000,
     memoryMB: 256,
     preferBun: true,
-    shellDefault: 'powershell',
+    shellDefault: 'auto',
     allowAuthPassthrough: false,
     maxFileBytes: 1 * 1024 * 1024, // 1MB
   },
@@ -56,7 +56,7 @@ export const DEFAULT_CONFIG: ContextModeConfig = {
     allowPrivateNetworkFetch: false,
   },
   knowledgeBase: {
-    dbPath: join(tmpdir(), 'windows-context-mode.db'),
+    dbPath: join(tmpdir(), 'context-mode-universal.db'),
     maxChunkSize: 1500,
     chunkOverlap: 100,
     searchTopK: 5,

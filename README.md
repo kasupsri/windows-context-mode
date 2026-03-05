@@ -1,39 +1,36 @@
-# windows-context-mode
+# context-mode-universal
 
-`windows-context-mode` is a Windows-first MCP server for safe command execution, output compression, and searchable context retrieval.
+`context-mode-universal` is a cross-platform MCP server for safe command execution, output compression, and searchable context retrieval.
 
-## Why This Project Is Windows-First
+## Why This Project
 
-Most context-management MCP servers are Linux-first. This project is built for Windows developer workflows:
-
-- PowerShell is the default shell runtime (`pwsh` or `powershell`).
-- Fallback order for shell commands is `PowerShell -> cmd -> Git Bash`.
-- Security rules are tuned for risky Windows command patterns.
-- Setup scripts and examples target Cursor and Codex on Windows.
+- Works across Windows, macOS, and Linux.
+- Enforces security policy checks before command execution.
+- Optimizes all tool responses for minimal token usage.
+- Provides local BM25 indexing/search for docs and large text.
 
 ## What It Provides
 
-- Sandboxed execution with strict policy checks before runtime invocation.
-- Algorithmic output compression (no LLM/API dependency inside compression).
-- Global response optimization that selects the minimum-token valid output under budget.
-- Local BM25 knowledge base indexing and search.
-- Stats telemetry for bytes/tokens saved in the current session.
-- Diagnostics (`doctor`) to validate runtime resolution and policy behavior.
+- Sandboxed execution with policy gates.
+- Deterministic, algorithmic output compression (no LLM/API dependency).
+- Global response optimization under `max_output_tokens`.
+- Local SQLite knowledge-base indexing + search.
+- Session stats telemetry for bytes/tokens saved.
+- Diagnostics (`doctor`) for runtime/policy/config visibility.
 
 ## Requirements
 
-- Windows 10/11 (primary target; non-Windows works best-effort)
 - Node.js 18+
 - `npm` / `npx`
-- Optional: `codex` CLI if you want one-command Codex registration
+- Optional: `codex` CLI for one-command Codex registration
 
 ## Installation
 
-### Recommended: Run from source (local path)
+### Run From Source
 
-```powershell
-git clone https://github.com/kasupsri/windows-context-mode.git
-cd windows-context-mode
+```bash
+git clone https://github.com/kasupsri/context-mode-universal.git
+cd context-mode-universal
 npm install
 npm run build
 npm run doctor
@@ -41,83 +38,41 @@ npm run doctor
 
 Register the built server with your MCP client:
 
-- command: `node` (or full path to `node.exe`)
-- args: `["<absolute-path>\\dist\\index.js"]`
+- command: `node`
+- args: `[/absolute/path/to/dist/index.js]`
 
-#### Cursor local-path example (`.cursor/mcp.json`)
+### Install With npx
 
-```json
-{
-  "mcpServers": {
-    "context-mode": {
-      "command": "node",
-      "args": ["C:\\Work\\Kasup\\windows-context-mode\\dist\\index.js"]
-    }
-  }
-}
-```
-
-#### Cursor merged example (with other MCP servers)
-
-```json
-{
-  "mcpServers": {
-    "MCP_DOCKER": {
-      "command": "docker",
-      "args": ["mcp", "gateway", "run"],
-      "env": {
-        "LOCALAPPDATA": "C:\\Users\\<you>\\AppData\\Local",
-        "ProgramData": "C:\\ProgramData",
-        "ProgramFiles": "C:\\Program Files"
-      }
-    },
-    "context7": {
-      "command": "docker",
-      "args": ["run", "-i", "--rm", "mcp/context7"]
-    },
-    "context-mode": {
-      "command": "node",
-      "args": ["C:\\Work\\Kasup\\windows-context-mode\\dist\\index.js"]
-    }
-  }
-}
-```
-
-#### Codex local-path example (`%USERPROFILE%\\.codex\\config.toml`)
-
-```toml
-[mcp_servers.context-mode]
-command = "C:\\Program Files\\nodejs\\node.exe"
-args = ["C:\\Work\\Kasup\\windows-context-mode\\dist\\index.js"]
-```
-
-If `node` is already in PATH for your IDE, you can use:
-
-```toml
-[mcp_servers.context-mode]
-command = "node"
-args = ["C:\\Work\\Kasup\\windows-context-mode\\dist\\index.js"]
-```
-
-### Optional: Use npm package (if published)
-
-```powershell
-npx -y windows-context-mode setup cursor
-codex mcp add context-mode -- npx -y windows-context-mode
+```bash
+npx -y context-mode-universal setup cursor
+codex mcp add context-mode -- npx -y context-mode-universal
 codex mcp list
 ```
 
-If `npx -y windows-context-mode` returns `npm ERR! 404 Not Found`, switch to the local-path setup above.
+## Bootstrap Scripts
 
-## One-Command Bootstrap (Windows)
-
-`setup.ps1` installs dependencies, builds, tests, runs diagnostics, and sets up Cursor/Codex.
+Windows PowerShell:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\setup.ps1
 ```
 
-Optional flags:
+macOS/Linux:
+
+```bash
+bash ./setup.sh
+```
+
+`setup.sh` supports:
+
+- `--skip-install`
+- `--skip-build`
+- `--skip-tests`
+- `--skip-doctor`
+- `--skip-cursor`
+- `--skip-codex`
+
+`setup.ps1` supports:
 
 - `-SkipInstall`
 - `-SkipBuild`
@@ -126,75 +81,114 @@ Optional flags:
 - `-SkipCursor`
 - `-SkipCodex`
 
-If `codex` CLI is not installed, `setup.ps1` automatically falls back to `%USERPROFILE%\.codex\config.toml`.
-
 ## MCP Tools
 
-- `execute`: Run code in a sandboxed subprocess with Windows-first shell resolution.
+- `execute`: Run code in a sandboxed subprocess with OS-aware shell resolution.
 - `execute_file`: Analyze/process file content in a sandboxed JavaScript runtime.
-- `compress`: Re-optimize arbitrary text using content-aware strategy hints.
-- `index`: Index markdown/text content into BM25 chunks.
-- `search`: Search indexed content.
-- `fetch_and_index`: Fetch a URL, convert to markdown/text, and index it.
-- `proxy`: Proxy common tool-like actions with always-optimized output.
-- `stats_get`: Show session compression savings.
+- `compress`: Re-optimize text using content-aware strategy hints.
+- `index`: Index markdown/text into BM25 chunks.
+- `search`: Query indexed content.
+- `fetch_and_index`: Fetch URL content, convert to markdown/text, and index it.
+- `proxy`: Proxy tool-like actions and return optimized output.
+- `stats_get`: Show in-memory session compression savings.
 - `stats_reset`: Reset in-memory session stats.
-- `stats_export`: Export stats JSON (default `%TEMP%`).
-- `doctor`: Run local diagnostics for runtime and safety checks.
+- `stats_export`: Export stats JSON to disk.
+- `doctor`: Run runtime and safety diagnostics.
 
-All tools accept optional `max_output_tokens` to bound response size.
+All tools accept optional `max_output_tokens`.
 
-## Measured Gains
+## Shell Runtime Resolution
 
-Measured on March 5, 2026 with deterministic samples comparing legacy response shaping vs the current global optimizer:
+`execute({ language: "shell" })` uses `shell_runtime: "auto"` by default.
 
-| Sample | Legacy output tokens | New output tokens | Improvement |
-|---|---:|---:|---:|
-| git log (500 lines) | 647 | 619 | 4.3% |
-| app logs (1000 lines) | 296 | 267 | 9.8% |
-| markdown docs (15 sections) | 2077 | 2048 | 1.4% |
-| proxy guidance text | 56 | 9 | 83.9% |
-| **Total (sample set)** | **3110** | **2977** | **4.3%** |
+Auto order by platform:
 
-Additional enforced gains:
+- Windows: `powershell -> cmd -> git-bash -> bash -> sh`
+- macOS: `zsh -> bash -> sh -> powershell`
+- Linux: `bash -> sh -> zsh -> powershell`
 
-- `max_output_tokens` coverage increased from `3/11` tools to `11/11`.
-- All success and error responses now pass through the same budgeted optimizer path.
-- Token-expensive inline compression footers were removed from normal tool responses.
+You can override with `shell_runtime`:
+
+- `auto`
+- `powershell`
+- `cmd`
+- `git-bash`
+- `bash`
+- `zsh`
+- `sh`
 
 ## Environment Variables
 
 | Variable | Default | Notes |
 |---|---|---|
-| `WCM_MAX_OUTPUT_BYTES` | `8192` | Target max size of compressed output |
-| `WCM_TIMEOUT_MS` | `30000` | Default sandbox timeout |
-| `WCM_MEMORY_MB` | `256` | Max memory hint for Node runtime |
-| `WCM_MAX_FILE_BYTES` | `1048576` | Max size for `execute_file` / `proxy(read_file)` |
-| `WCM_ALLOW_AUTH_PASSTHROUGH` | `false` | Pass host auth tokens/credentials into subprocess env |
-| `WCM_SHELL` | `powershell` | `powershell`, `cmd`, or `git-bash` |
-| `WCM_POLICY_MODE` | `strict` | `strict`, `balanced`, `permissive` |
-| `WCM_ALLOW_PRIVATE_NETWORK_FETCH` | `false` | Allow `fetch_and_index` to access localhost/private IPs |
-| `WCM_DB_PATH` | OS temp path | SQLite DB path for indexed content |
-| `WCM_SEARCH_TOP_K` | `5` | Default search result count |
-| `WCM_MAX_FETCH_BYTES` | `5242880` | Max fetch size for `fetch_and_index` |
-| `WCM_STATS_EXPORT_PATH` | unset | Default export path override |
-| `WCM_STATS_MAX_EVENTS` | `1000` | Max in-memory compression events retained |
+| `CMU_MAX_OUTPUT_BYTES` | `8192` | Target max compressed output bytes |
+| `CMU_TIMEOUT_MS` | `30000` | Sandbox timeout |
+| `CMU_MEMORY_MB` | `256` | Node runtime memory hint |
+| `CMU_MAX_FILE_BYTES` | `1048576` | Max size for `execute_file` / `proxy(read_file)` |
+| `CMU_ALLOW_AUTH_PASSTHROUGH` | `false` | Pass host auth env vars into subprocess |
+| `CMU_SHELL` | `auto` | `auto`, `powershell`, `cmd`, `git-bash`, `bash`, `zsh`, `sh` |
+| `CMU_POLICY_MODE` | `strict` | `strict`, `balanced`, `permissive` |
+| `CMU_ALLOW_PRIVATE_NETWORK_FETCH` | `false` | Allow localhost/private network fetches |
+| `CMU_DB_PATH` | OS temp path | SQLite DB path |
+| `CMU_SEARCH_TOP_K` | `5` | Default search results |
+| `CMU_MAX_FETCH_BYTES` | `5242880` | Max bytes for `fetch_and_index` |
+| `CMU_STATS_EXPORT_PATH` | unset | Default `stats_export` output path override |
+| `CMU_STATS_MAX_EVENTS` | `1000` | Max retained in-memory optimization events |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
 
 ## Security Model
 
-- Default mode is `strict`.
-- `strict` blocks destructive commands and script-download-execute chains.
-- `balanced` allows more commands but prompts on risky destructive operations.
-- `permissive` disables command deny rules but still protects sensitive file paths.
-- Subprocess auth credential passthrough is **disabled by default** (`WCM_ALLOW_AUTH_PASSTHROUGH=false`).
-- `fetch_and_index` blocks localhost/private-network targets by default to reduce SSRF risk.
+- Default mode: `strict`
+- `strict`: blocks destructive commands and download-execute chains.
+- `balanced`: blocks high-risk commands and marks destructive commands as `ask`.
+- `permissive`: disables command deny rules but still protects sensitive file paths.
+- Sensitive file rules (for example `.env`, private keys) are always enforced.
+- Private-network URL fetches are blocked by default.
 
-Policy logic is implemented in `src/security/`.
+## Breaking Migration (from `windows-context-mode`)
+
+This release is an immediate-break rename with no alias wrapper.
+
+### 1) Package/CLI rename
+
+- `npx -y windows-context-mode ...` -> `npx -y context-mode-universal ...`
+- `codex mcp add context-mode -- npx -y windows-context-mode` -> `codex mcp add context-mode -- npx -y context-mode-universal`
+
+### 2) Environment variable prefix rename
+
+All `WCM_*` variables are now `CMU_*`.
+
+Examples:
+
+- `WCM_TIMEOUT_MS` -> `CMU_TIMEOUT_MS`
+- `WCM_SHELL` -> `CMU_SHELL`
+- `WCM_POLICY_MODE` -> `CMU_POLICY_MODE`
+
+### 3) MCP config rename
+
+Update package references in MCP configs:
+
+```json
+{
+  "mcpServers": {
+    "context-mode": {
+      "command": "npx",
+      "args": ["-y", "context-mode-universal"]
+    }
+  }
+}
+```
+
+### 4) Migration checklist
+
+- Remove old `windows-context-mode` server entries from MCP config.
+- Add/update `context-mode-universal` entries.
+- Rename `WCM_*` env vars to `CMU_*`.
+- Re-run `npm run doctor` and verify resolved shell + policy mode.
 
 ## Development
 
-```powershell
+```bash
 npm install
 npm run build
 npm test
@@ -207,18 +201,6 @@ Additional docs:
 - [HOW_IT_WORKS.md](./HOW_IT_WORKS.md)
 - [CONTRIBUTING.md](./CONTRIBUTING.md)
 - [BENCHMARK.md](./BENCHMARK.md)
-
-## Credits
-
-This project is a Windows-focused adaptation of [universal-context-mode](https://github.com/phanindra208/universal-context-mode) by [phanindra208](https://github.com/phanindra208).
-
-Core concepts reused and adapted under the MIT License include:
-
-- algorithmic compression strategy design
-- local knowledge-base indexing/search architecture
-- MCP-oriented tool composition patterns
-
-Windows-specific runtime resolution, policy tuning, setup flow, and developer UX have been extended in this fork.
 
 ## License
 

@@ -11,12 +11,15 @@ export function doctorTool(_input: DoctorToolInput = {}): string {
   const shell = getRuntimeForLanguage('shell', DEFAULT_CONFIG.sandbox.shellDefault);
   const shellRuntime = shell?.runtimeId ?? shell?.command ?? 'unavailable';
 
-  const riskyCommand = 'Remove-Item -Recurse -Force C:\\temp\\danger';
+  const riskyCommand =
+    process.platform === 'win32'
+      ? 'Remove-Item -Recurse -Force C:\\temp\\danger'
+      : 'rm -rf /tmp/danger';
   const riskyEval = evaluateCommand(riskyCommand);
   const envEval = evaluateFilePath('.env');
 
   const lines = [
-    '=== Windows Context Mode Doctor ===',
+    '=== Context Mode Universal Doctor ===',
     `Platform: ${process.platform}`,
     `Node: ${process.version}`,
     `Default shell: ${DEFAULT_CONFIG.sandbox.shellDefault}`,

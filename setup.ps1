@@ -37,7 +37,7 @@ function Ensure-CodexConfigEntry {
   $block = @"
 [mcp_servers.context-mode]
 command = "npx"
-args = ["-y", "windows-context-mode"]
+args = ["-y", "context-mode-universal"]
 "@
 
   if (-not (Test-Path $codexDir)) {
@@ -60,7 +60,7 @@ args = ["-y", "windows-context-mode"]
   Write-Host "Appended context-mode MCP config to: $configPath" -ForegroundColor Yellow
 }
 
-Write-Host "Windows Context Mode setup started." -ForegroundColor Green
+Write-Host "Context Mode Universal setup started." -ForegroundColor Green
 Write-Host "Project: $PSScriptRoot"
 
 Push-Location $PSScriptRoot
@@ -85,13 +85,13 @@ try {
   }
 
   if (-not $SkipCursor) {
-    Invoke-Step "Setting up Cursor files" { npx -y windows-context-mode setup cursor }
+    Invoke-Step "Setting up Cursor files" { npx -y context-mode-universal setup cursor }
   }
 
   if (-not $SkipCodex) {
     Invoke-Step "Configuring Codex MCP server" {
       if (Get-Command codex -ErrorAction SilentlyContinue) {
-        codex mcp add context-mode -- npx -y windows-context-mode
+        codex mcp add context-mode -- npx -y context-mode-universal
         codex mcp list
       } else {
         Write-Host "Codex CLI not found. Falling back to ~/.codex/config.toml update." -ForegroundColor Yellow

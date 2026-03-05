@@ -23,7 +23,7 @@ describe('MCP Protocol Compliance', () => {
     await client.close();
   });
 
-  it('lists all Windows context mode tools', async () => {
+  it('lists all context mode universal tools', async () => {
     const { tools } = await client.listTools();
     const names = tools.map(t => t.name);
 
@@ -158,7 +158,7 @@ describe('MCP Protocol Compliance', () => {
       arguments: {
         language: 'shell',
         code: 'echo hello',
-        shell_runtime: 'zsh',
+        shell_runtime: 'fish',
       },
     });
 

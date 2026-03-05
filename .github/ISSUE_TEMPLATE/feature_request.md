@@ -10,7 +10,7 @@ assignees: ''
 <!-- A clear description of the feature you'd like -->
 
 ## Problem It Solves
-<!-- What problem does this solve? Which Windows workflow or MCP client benefits? -->
+<!-- What problem does this solve? Which workflow or MCP client benefits? -->
 
 ## Proposed Solution
 <!-- How should this work? -->
@@ -19,7 +19,7 @@ assignees: ''
 <!-- Any alternative approaches? -->
 
 ## Compatibility Notes
-<!-- Any runtime/security impact? Example: shell runtime, policy mode, setup flow -->
+<!-- Runtime/security impact? Cross-platform behavior? -->
 
 ## Additional Context
 <!-- Any other information, screenshots, examples -->

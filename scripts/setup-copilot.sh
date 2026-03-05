@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Setup windows-context-mode for GitHub Copilot (VS Code)
+# Setup context-mode-universal for GitHub Copilot (VS Code)
 set -euo pipefail
 
-npx -y windows-context-mode setup copilot
+npx -y context-mode-universal setup copilot

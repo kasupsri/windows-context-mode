@@ -1,4 +1,4 @@
-# WINDOWS CONTEXT MODE: HOW IT WORKS
+# CONTEXT MODE UNIVERSAL: HOW IT WORKS
 
 ## End-to-End Request Flow
 
@@ -6,33 +6,35 @@
 flowchart TD
     A[Client sends MCP tool call] --> B[Validate tool input]
     B --> C{Safety check required?}
-    C -->|yes| D[Evaluate command/path against policy]
+    C -->|yes| D[Evaluate command/path against active policy]
     C -->|no| E[Run tool logic]
-    D -->|deny| F[Return blocked reason]
+    D -->|deny or ask| F[Return policy message]
     D -->|allow| E
-    E --> G[Produce raw tool output]
+    E --> G[Produce raw output]
     G --> H[Generate optimization candidates]
     H --> I[Select minimum-token valid candidate under budget]
     I --> J[Record optimization stats]
     J --> K[Return compact response]
 ```
 
-## Shell Runtime Resolution (Windows-First)
+## Shell Runtime Resolution (Cross-Platform)
 
-`execute` resolves shell runtimes with Windows-first priority:
+Default shell behavior is `shell_runtime: "auto"`.
 
-1. PowerShell (`pwsh`, then `powershell`)
-2. `cmd.exe`
-3. Git Bash (`bash.exe` from Git for Windows)
+Auto fallback order:
 
-Language-specific requests (`powershell`, `cmd`, `bash`) force a matching preference before fallback.
+1. Windows: `powershell -> cmd -> git-bash -> bash -> sh`
+2. macOS: `zsh -> bash -> sh -> powershell`
+3. Linux: `bash -> sh -> zsh -> powershell`
+
+Language-specific shell requests (`powershell`, `cmd`, `bash`, `sh`) force that runtime first, then fallback to auto-order candidates.
 
 ```mermaid
 flowchart TD
-    R[shell command request] --> P{Preferred runtime available?}
-    P -->|yes| OK[Run with preferred runtime]
+    R[shell request] --> P{Preferred runtime available?}
+    P -->|yes| OK[Execute]
     P -->|no| F1[Try next fallback]
-    F1 --> F2{Any fallback available?}
+    F1 --> F2{Any runtime available?}
     F2 -->|yes| OK
     F2 -->|no| X[Return runtime unavailable error]
 ```
@@ -41,44 +43,32 @@ flowchart TD
 
 Policy evaluation happens before execution:
 
-- `strict` (default): blocks destructive commands and script-download-execute chains.
-- `balanced`: blocks high-risk commands and flags some destructive commands for confirmation-style handling.
-- `permissive`: allows commands broadly, but still protects sensitive file paths (for example `.env`, private keys).
+- `strict` (default): blocks destructive and download-execute command patterns.
+- `balanced`: blocks high-risk commands and marks destructive commands as `ask`.
+- `permissive`: allows commands broadly, but still blocks sensitive file paths.
+
+Policy sets are OS-aware:
+
+- Windows patterns cover PowerShell/cmd destructive operations.
+- macOS/Linux patterns cover `rm -rf`, disk tooling, reboot/shutdown variants, and curl/wget pipe-to-shell patterns.
 
 ## Compression and Stats
 
-- Every response is optimization-scored using deterministic, content-aware strategies.
-- The server returns the minimum-token valid candidate under the active budget.
-- Stats track processed/changed responses, budget-forced responses, and bytes/tokens saved.
-- `stats_get` returns in-memory totals and per-tool breakdown.
-- `stats_export` writes a JSON report (default location under `%TEMP%`).
+- Every tool response goes through deterministic optimization strategies.
+- The optimizer picks the smallest valid candidate under budget.
+- Session stats track processed responses, changed outputs, budget-forced responses, and token/byte savings.
 
-## Measured Improvement
+## Knowledge Base
 
-Measured on March 5, 2026 against the previous response path on a deterministic sample set:
-
-- Legacy output tokens: `3110`
-- Current output tokens: `2977`
-- Net reduction: `133 tokens` (`4.3%`)
-
-Breakdown highlights:
-
-- `git log` sample: `647 -> 619` tokens (`4.3%`)
-- `application logs` sample: `296 -> 267` tokens (`9.8%`)
-- `markdown docs` sample: `2077 -> 2048` tokens (`1.4%`)
-- `proxy guidance text`: `56 -> 9` tokens (`83.9%`)
-
-## Knowledge Base Path
-
-`index` and `fetch_and_index` store chunked content in SQLite (FTS5 + BM25).  
-`search` returns ranked passages for query-driven recall.
+- `index` and `fetch_and_index` store chunked content in SQLite (FTS5 + BM25).
+- `search` returns ranked passages for query-driven retrieval.
 
 ## Diagnostics
 
 `doctor` reports:
 
-- active platform/runtime details
-- resolved default shell
-- policy mode
-- compression and timeout config
-- safety self-check sample results
+- platform and Node runtime
+- configured default shell and resolved shell runtime
+- policy mode and fetch-network policy
+- execution limits and database path
+- safety self-check verdicts

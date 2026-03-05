@@ -1,12 +1,14 @@
 {
-  "name": "windows-context-mode",
+  "name": "context-mode-universal",
   "version": "0.1.0",
-  "description": "Windows-first MCP server that compresses tool outputs, enforces strict safety policies, and tracks token savings.",
+  "description": "Cross-platform MCP server that compresses tool outputs, enforces strict safety policies, and tracks token savings.",
   "keywords": [
     "mcp",
     "context-window",
     "compression",
-    "windows",
+    "cross-platform",
+    "macos",
+    "linux",
     "powershell",
     "cursor",
     "codex",
@@ -18,13 +20,14 @@
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "windows-context-mode": "dist/index.js"
+    "context-mode-universal": "dist/index.js"
   },
   "files": [
     "dist/",
     "templates/",
     "scripts/",
-    "setup.ps1"
+    "setup.ps1",
+    "setup.sh"
   ],
   "scripts": {
     "build": "tsc",
@@ -42,6 +45,7 @@
     "setup": "node dist/index.js setup",
     "doctor": "node dist/index.js doctor",
     "setup:ps1": "powershell -ExecutionPolicy Bypass -File ./setup.ps1",
+    "setup:sh": "bash ./setup.sh",
     "prepublishOnly": "npm run build && npm test"
   },
   "dependencies": {
@@ -69,10 +73,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/kasupsri/windows-context-mode.git"
+    "url": "https://github.com/kasupsri/context-mode-universal.git"
   },
   "bugs": {
-    "url": "https://github.com/kasupsri/windows-context-mode/issues"
+    "url": "https://github.com/kasupsri/context-mode-universal/issues"
   },
-  "homepage": "https://github.com/kasupsri/windows-context-mode#readme"
+  "homepage": "https://github.com/kasupsri/context-mode-universal#readme"
 }

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * windows-context-mode — MCP server entry point
+ * context-mode-universal — MCP server entry point
  *
- * Windows-first MCP server for safe execution and context compression.
+ * Cross-platform MCP server for safe execution and context compression.
  */
 
 import { createServer } from './server.js';
@@ -45,7 +45,7 @@ if (args[0] === 'setup') {
 }
 
 async function startServer() {
-  logger.info('Starting windows-context-mode MCP server', { pid: process.pid });
+  logger.info('Starting context-mode-universal MCP server', { pid: process.pid });
 
   const { server, transport } = createServer();
 

@@ -5,6 +5,7 @@ import {
   extractShellCommands,
   splitChainedCommands,
 } from '../../src/security/policy.js';
+import { policyByMode } from '../../src/security/default-rules.js';
 
 describe('policy splitChainedCommands', () => {
   it('splits chained shell commands', () => {
@@ -15,9 +16,22 @@ describe('policy splitChainedCommands', () => {
 });
 
 describe('policy evaluateCommand', () => {
-  it('denies destructive strict command', () => {
-    const decision = evaluateCommand('Remove-Item -Recurse -Force C:\\temp\\x');
+  it('denies destructive strict Windows command', () => {
+    const windowsPolicy = policyByMode('strict', 'win32');
+    const decision = evaluateCommand('Remove-Item -Recurse -Force C:\\temp\\x', windowsPolicy);
     expect(decision.decision).toBe('deny');
+  });
+
+  it('denies destructive strict POSIX command', () => {
+    const posixPolicy = policyByMode('strict', 'linux');
+    const decision = evaluateCommand('rm -rf /tmp/sandbox', posixPolicy);
+    expect(decision.decision).toBe('deny');
+  });
+
+  it('asks for dangerous balanced POSIX command', () => {
+    const posixPolicy = policyByMode('balanced', 'darwin');
+    const decision = evaluateCommand('rm -rf /tmp/sandbox', posixPolicy);
+    expect(decision.decision).toBe('ask');
   });
 
   it('allows normal read-only command', () => {

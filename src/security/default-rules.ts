@@ -14,7 +14,7 @@ const SHARED_FILE_DENY = [
   '**/*id_rsa*',
 ];
 
-const STRICT_DENY = [
+const WINDOWS_STRICT_DENY = [
   '*Remove-Item* -Recurse* -Force*',
   '*del * /s * /q *',
   '*rmdir* /s* /q*',
@@ -33,7 +33,7 @@ const STRICT_DENY = [
   '*irm* | *iex*',
 ];
 
-const BALANCED_DENY = [
+const WINDOWS_BALANCED_DENY = [
   '*format *',
   '*diskpart*',
   '*reg delete*',
@@ -46,7 +46,7 @@ const BALANCED_DENY = [
   '*irm* | *iex*',
 ];
 
-const BALANCED_ASK = [
+const WINDOWS_BALANCED_ASK = [
   '*Remove-Item* -Recurse* -Force*',
   '*del * /s * /q *',
   '*rmdir* /s* /q*',
@@ -54,7 +54,91 @@ const BALANCED_ASK = [
   '*Restart-Computer*',
 ];
 
-export function policyByMode(mode: 'strict' | 'balanced' | 'permissive'): PolicyRuleSet {
+const POSIX_STRICT_DENY = [
+  '*rm * -rf *',
+  '*rm -rf *',
+  '*rm * -fr *',
+  '*mkfs*',
+  '*fdisk*',
+  '*parted*',
+  '*dd * of=/dev/*',
+  '*shutdown*',
+  '*reboot*',
+  '*halt*',
+  '*poweroff*',
+  '*systemctl* reboot*',
+  '*systemctl* poweroff*',
+  '*launchctl* reboot*',
+  '*curl* | *sh*',
+  '*curl* | *bash*',
+  '*wget* -O-* | *sh*',
+  '*wget* -qO-* | *bash*',
+];
+
+const POSIX_BALANCED_DENY = [
+  '*mkfs*',
+  '*fdisk*',
+  '*parted*',
+  '*dd * of=/dev/*',
+  '*curl* | *sh*',
+  '*curl* | *bash*',
+  '*wget* -O-* | *sh*',
+  '*wget* -qO-* | *bash*',
+];
+
+const POSIX_BALANCED_ASK = [
+  '*rm * -rf *',
+  '*rm -rf *',
+  '*rm * -fr *',
+  '*shutdown*',
+  '*reboot*',
+  '*halt*',
+  '*poweroff*',
+  '*systemctl* reboot*',
+  '*systemctl* poweroff*',
+  '*launchctl* reboot*',
+];
+
+function windowsRules(mode: 'strict' | 'balanced'): PolicyRuleSet {
+  if (mode === 'balanced') {
+    return {
+      allow: [],
+      deny: WINDOWS_BALANCED_DENY,
+      ask: WINDOWS_BALANCED_ASK,
+      fileDeny: SHARED_FILE_DENY,
+    };
+  }
+
+  return {
+    allow: [],
+    deny: WINDOWS_STRICT_DENY,
+    ask: [],
+    fileDeny: SHARED_FILE_DENY,
+  };
+}
+
+function posixRules(mode: 'strict' | 'balanced'): PolicyRuleSet {
+  if (mode === 'balanced') {
+    return {
+      allow: [],
+      deny: POSIX_BALANCED_DENY,
+      ask: POSIX_BALANCED_ASK,
+      fileDeny: SHARED_FILE_DENY,
+    };
+  }
+
+  return {
+    allow: [],
+    deny: POSIX_STRICT_DENY,
+    ask: [],
+    fileDeny: SHARED_FILE_DENY,
+  };
+}
+
+export function policyByMode(
+  mode: 'strict' | 'balanced' | 'permissive',
+  platform: NodeJS.Platform = process.platform
+): PolicyRuleSet {
   if (mode === 'permissive') {
     return {
       allow: ['*'],
@@ -64,19 +148,8 @@ export function policyByMode(mode: 'strict' | 'balanced' | 'permissive'): Policy
     };
   }
 
-  if (mode === 'balanced') {
-    return {
-      allow: [],
-      deny: BALANCED_DENY,
-      ask: BALANCED_ASK,
-      fileDeny: SHARED_FILE_DENY,
-    };
+  if (platform === 'win32') {
+    return windowsRules(mode);
   }
-
-  return {
-    allow: [],
-    deny: STRICT_DENY,
-    ask: [],
-    fileDeny: SHARED_FILE_DENY,
-  };
+  return posixRules(mode);
 }

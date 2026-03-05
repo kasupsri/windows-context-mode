@@ -4,7 +4,7 @@ import { CodexAdapter } from './codex.js';
 import { type BaseAdapter, type SetupResult } from './base-adapter.js';
 
 const ADAPTERS: BaseAdapter[] = [new CursorAdapter(), new CodexAdapter()];
-const SERVER_PACKAGE = 'windows-context-mode';
+const SERVER_PACKAGE = 'context-mode-universal';
 
 async function detectIde(projectRoot: string): Promise<BaseAdapter | null> {
   for (const adapter of ADAPTERS) {
@@ -47,7 +47,7 @@ export async function runSetup(ideHint?: string): Promise<void> {
     console.log(`Detected IDE: ${adapter.ideName}`);
   }
 
-  console.log(`Setting up windows-context-mode for ${adapter.ideName}...`);
+  console.log(`Setting up context-mode-universal for ${adapter.ideName}...`);
   const result: SetupResult = await adapter.setup(config);
 
   if (result.filesCreated.length > 0) {
@@ -69,18 +69,18 @@ No supported IDE detected in current directory.
 Supported IDEs: ${ADAPTERS.map(a => a.ideName).join(', ')}
 
 Manual setup options:
-  npx windows-context-mode setup cursor
-  npx windows-context-mode setup codex
+  npx context-mode-universal setup cursor
+  npx context-mode-universal setup codex
 
 Codex CLI command:
-  codex mcp add context-mode -- npx -y windows-context-mode
+  codex mcp add context-mode -- npx -y context-mode-universal
 
 Generic MCP config:
   {
     "mcpServers": {
       "context-mode": {
         "command": "npx",
-        "args": ["-y", "windows-context-mode"]
+        "args": ["-y", "context-mode-universal"]
       }
     }
   }

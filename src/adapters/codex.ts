@@ -6,8 +6,8 @@ const CODEX_HELP = `# Codex Setup
 
 Run:
 
-\`\`\`powershell
-codex mcp add context-mode -- npx -y windows-context-mode
+\`\`\`bash
+codex mcp add context-mode -- npx -y context-mode-universal
 codex mcp list
 \`\`\`
 `;
@@ -37,7 +37,7 @@ export class CodexAdapter implements BaseAdapter {
       ide: this.ideName,
       filesCreated,
       nextSteps: [
-        '1. Run: codex mcp add context-mode -- npx -y windows-context-mode',
+        '1. Run: codex mcp add context-mode -- npx -y context-mode-universal',
         '2. Verify: codex mcp list',
         '3. Restart your Codex-enabled VS Code window.',
       ],

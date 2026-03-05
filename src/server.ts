@@ -26,7 +26,7 @@ const TOOLS: Tool[] = [
   {
     name: 'execute',
     description:
-      'Execute code in a sandboxed subprocess. Windows-first shell behavior uses PowerShell by default, with cmd and optional Git Bash fallback. Strict safety policies are enforced before execution.',
+      'Execute code in a sandboxed subprocess. Shell runtime resolution is cross-platform with OS-aware defaults and strict safety checks before execution.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -59,7 +59,10 @@ const TOOLS: Tool[] = [
         intent: { type: 'string' },
         timeout: { type: 'number' },
         max_output_tokens: { type: 'number' },
-        shell_runtime: { type: 'string', enum: ['powershell', 'cmd', 'git-bash'] },
+        shell_runtime: {
+          type: 'string',
+          enum: ['auto', 'powershell', 'cmd', 'git-bash', 'bash', 'zsh', 'sh'],
+        },
       },
       required: ['language', 'code'],
     },
@@ -174,7 +177,7 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'stats_export',
-    description: 'Export session stats JSON to a file (default: %TEMP%).',
+    description: 'Export session stats JSON to a file (default: OS temp directory).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -321,7 +324,7 @@ function validateToolArguments(tool: Tool, args: unknown): string | null {
 export function createServer(): { server: Server; transport: StdioServerTransport } {
   const server = new Server(
     {
-      name: 'windows-context-mode',
+      name: 'context-mode-universal',
       version: '0.1.0',
     },
     {

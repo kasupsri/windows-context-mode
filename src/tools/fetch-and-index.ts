@@ -145,9 +145,10 @@ async function fetchAndConvertToMarkdown(url: string): Promise<string> {
   await assertPublicFetchTarget(parsed);
 
   // Use built-in fetch (Node 18+)
+  const serverVersion = process.env['npm_package_version'] ?? '0.1.0';
   const response = await fetch(parsed, {
     headers: {
-      'User-Agent': 'windows-context-mode/0.1.0 (MCP Server)',
+      'User-Agent': `context-mode-universal/${serverVersion} (MCP Server)`,
       Accept: 'text/html,application/xhtml+xml,text/plain',
     },
     signal: AbortSignal.timeout(15_000),

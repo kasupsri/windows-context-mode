@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Setup windows-context-mode for Windsurf
+# Setup context-mode-universal for Windsurf
 set -euo pipefail
 
-npx -y windows-context-mode setup windsurf
+npx -y context-mode-universal setup windsurf
