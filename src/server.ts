@@ -214,7 +214,9 @@ const RESPONSE_MODES: ReadonlySet<ResponseMode> = new Set(['minimal', 'full']);
 for (const tool of TOOLS) {
   const schema = tool.inputSchema as ToolSchema;
   schema.properties = schema.properties ?? {};
-  schema.properties['max_output_tokens'] = schema.properties['max_output_tokens'] ?? { type: 'number' };
+  schema.properties['max_output_tokens'] = schema.properties['max_output_tokens'] ?? {
+    type: 'number',
+  };
   schema.properties['response_mode'] = {
     type: 'string',
     enum: ['minimal', 'full'],
@@ -255,7 +257,9 @@ function resolveRequestedMaxOutputTokens(rawValue: unknown): number {
   const configuredDefault = DEFAULT_CONFIG.compression.defaultMaxOutputTokens;
   const configuredHard = DEFAULT_CONFIG.compression.hardMaxOutputTokens;
   const defaultTokens =
-    Number.isFinite(configuredDefault) && configuredDefault > 0 ? Math.floor(configuredDefault) : 400;
+    Number.isFinite(configuredDefault) && configuredDefault > 0
+      ? Math.floor(configuredDefault)
+      : 400;
   const hardCap =
     Number.isFinite(configuredHard) && configuredHard > 0 ? Math.floor(configuredHard) : 800;
   const requested =

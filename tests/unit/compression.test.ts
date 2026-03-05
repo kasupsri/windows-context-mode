@@ -188,7 +188,10 @@ Log all exceptions.
   });
 
   it('supports ultra strategy for major content types', () => {
-    const json = JSON.stringify([{ id: 1, name: 'a' }, { id: 2, name: 'b' }]);
+    const json = JSON.stringify([
+      { id: 1, name: 'a' },
+      { id: 2, name: 'b' },
+    ]);
     const log = '2026-01-01 INFO ok\n2026-01-01 ERROR boom';
     const markdown = '# A\n\nLine one\n\n## B\n\nLine two';
     const csv = 'a,b\n1,2\n3,4';

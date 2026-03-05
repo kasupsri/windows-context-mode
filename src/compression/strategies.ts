@@ -164,7 +164,12 @@ function looksLikeMarkdown(text: string): boolean {
 
 // ─── Compression Strategies ──────────────────────────────────────────────────
 
-function compressJson(text: string, maxChars: number, intent?: string, parsedJson?: unknown): string {
+function compressJson(
+  text: string,
+  maxChars: number,
+  intent?: string,
+  parsedJson?: unknown
+): string {
   if (intent) return filterByIntent(text, intent, maxChars);
 
   const parsed = parsedJson ?? tryParseJson(text);
@@ -535,7 +540,9 @@ function ultraJson(text: string, maxChars: number, parsedJson?: unknown): string
     const second = parsedArray[1];
     const keys =
       first && typeof first === 'object' && !Array.isArray(first)
-        ? Object.keys(first as object).slice(0, 8).join(',')
+        ? Object.keys(first as object)
+            .slice(0, 8)
+            .join(',')
         : '';
     const lines = [
       `json:a n=${parsedArray.length} t=${getJsonType(first)}`,
@@ -551,10 +558,7 @@ function ultraJson(text: string, maxChars: number, parsedJson?: unknown): string
   if (parsed && typeof parsed === 'object') {
     const obj = parsed as Record<string, unknown>;
     const keys = Object.keys(obj);
-    const lines = [
-      `json:o keys=${keys.length}`,
-      `k:${keys.slice(0, 15).join(',')}`,
-    ];
+    const lines = [`json:o keys=${keys.length}`, `k:${keys.slice(0, 15).join(',')}`];
     return clampToMaxChars(lines.join('\n'), maxChars);
   }
 
@@ -624,7 +628,10 @@ function ultraCsv(text: string, maxChars: number): string {
   }
 
   const header = lines[0] ?? '';
-  const cols = header.split(delimiter).map(c => c.trim()).filter(Boolean);
+  const cols = header
+    .split(delimiter)
+    .map(c => c.trim())
+    .filter(Boolean);
   const rowCount = Math.max(0, lines.length - 1);
   const sample = lines[1] ?? '';
 
@@ -713,7 +720,8 @@ export function compress(text: string, options: CompressOptions = {}): CompressR
   const inputChars = text.length;
   const parsedJson = options.parsedJson ?? tryParseJson(text);
   const contentType = detectContentTypeWithParsed(text, parsedJson);
-  let strategy: CompressionStrategy = options.strategy ?? DEFAULT_CONFIG.compression.defaultStrategy;
+  let strategy: CompressionStrategy =
+    options.strategy ?? DEFAULT_CONFIG.compression.defaultStrategy;
   let output: string;
 
   if (!options.strategy && options.intent) {

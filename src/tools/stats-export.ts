@@ -11,5 +11,7 @@ export interface StatsExportInput {
 export async function statsExportTool(input: StatsExportInput): Promise<string> {
   const path = await statsTracker.exportToFile(input.path ?? DEFAULT_CONFIG.stats.exportPath);
   const responseMode = input.response_mode ?? DEFAULT_CONFIG.compression.responseMode;
-  return responseMode === 'full' ? `Session stats exported to: ${path}` : `ok:stats_export path=${path}`;
+  return responseMode === 'full'
+    ? `Session stats exported to: ${path}`
+    : `ok:stats_export path=${path}`;
 }

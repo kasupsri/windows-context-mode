@@ -52,7 +52,9 @@ function resolveBudgetTokens(maxOutputTokens?: number): number {
   const configuredDefault = DEFAULT_CONFIG.compression.defaultMaxOutputTokens;
   const configuredHard = DEFAULT_CONFIG.compression.hardMaxOutputTokens;
   const defaultTokens =
-    Number.isFinite(configuredDefault) && configuredDefault > 0 ? Math.floor(configuredDefault) : 400;
+    Number.isFinite(configuredDefault) && configuredDefault > 0
+      ? Math.floor(configuredDefault)
+      : 400;
   const hardCap =
     Number.isFinite(configuredHard) && configuredHard > 0 ? Math.floor(configuredHard) : 800;
   const requested =

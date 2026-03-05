@@ -58,7 +58,9 @@ export class Searcher {
     }
 
     if (compact) {
-      const lines: string[] = [`search n=${response.totalFound} q="${response.query}" kb=${response.kbName}`];
+      const lines: string[] = [
+        `search n=${response.totalFound} q="${response.query}" kb=${response.kbName}`,
+      ];
       for (let i = 0; i < response.results.length; i++) {
         const r = response.results[i]!;
         const heading = r.heading ? ` h=${r.heading}` : '';
