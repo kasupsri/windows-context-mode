@@ -66,6 +66,44 @@ function hasBun(): boolean {
   }
 }
 
+interface PythonRuntimeInfo {
+  command: string;
+  args: (filePath: string) => string[];
+}
+
+function detectPythonRuntime(): PythonRuntimeInfo | null {
+  const sentinel = 'context-mode-python-ok';
+  const baseProbe = `import sys; sys.stdout.write("${sentinel}")`;
+  const candidates: PythonRuntimeInfo[] = isWindows
+    ? [
+        { command: 'python', args: filePath => [filePath] },
+        { command: 'py', args: filePath => ['-3', filePath] },
+        { command: 'python3', args: filePath => [filePath] },
+      ]
+    : [
+        { command: 'python3', args: filePath => [filePath] },
+        { command: 'python', args: filePath => [filePath] },
+      ];
+
+  for (const candidate of candidates) {
+    try {
+      const probeArgs = candidate.command === 'py' ? ['-3', '-c', baseProbe] : ['-c', baseProbe];
+      const output = execFileSync(candidate.command, probeArgs, {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 2500,
+      });
+      if (output.includes(sentinel)) {
+        return candidate;
+      }
+    } catch {
+      // Try next candidate.
+    }
+  }
+
+  return null;
+}
+
 function detectPowerShellCommand(): string | null {
   if (commandExists('pwsh')) return 'pwsh';
   if (commandExists('powershell')) return 'powershell';
@@ -101,7 +139,7 @@ function detectGitBashPath(): string | null {
 }
 
 const bunAvailable = hasBun();
-const pythonCommand = isAvailable('python3') ? 'python3' : isAvailable('python') ? 'python' : null;
+const pythonRuntime = detectPythonRuntime();
 
 const NON_SHELL_RUNTIMES: Runtime[] = [
   {
@@ -134,17 +172,17 @@ const NON_SHELL_RUNTIMES: Runtime[] = [
   },
   {
     language: 'python',
-    command: pythonCommand ?? 'python',
-    args: f => [f],
+    command: pythonRuntime?.command ?? 'python',
+    args: f => (pythonRuntime ? pythonRuntime.args(f) : [f]),
     extension: 'py',
-    available: pythonCommand !== null,
+    available: pythonRuntime !== null,
   },
   {
     language: 'py',
-    command: pythonCommand ?? 'python',
-    args: f => [f],
+    command: pythonRuntime?.command ?? 'python',
+    args: f => (pythonRuntime ? pythonRuntime.args(f) : [f]),
     extension: 'py',
-    available: pythonCommand !== null,
+    available: pythonRuntime !== null,
   },
   {
     language: 'ruby',

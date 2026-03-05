@@ -57,6 +57,11 @@ export interface RecordOptions {
   candidateCount?: number;
 }
 
+function formatInteger(value: number): string {
+  const integer = Number.isFinite(value) ? Math.trunc(value) : 0;
+  return integer.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
 class StatsTracker {
   private readonly startedAt: Date = new Date();
   private events: CompressionEvent[] = [];
@@ -173,9 +178,9 @@ class StatsTracker {
       `Responses processed: ${stats.responsesProcessed}`,
       `Responses changed: ${stats.responsesChanged}`,
       `Budget-forced responses: ${stats.budgetForced}`,
-      `Input: ${(stats.totalInputBytes / 1024).toFixed(1)} KB (${stats.totalInputTokens.toLocaleString()} tokens)`,
-      `Output: ${(stats.totalOutputBytes / 1024).toFixed(1)} KB (${stats.totalOutputTokens.toLocaleString()} tokens)`,
-      `Saved: ${(stats.bytesSaved / 1024).toFixed(1)} KB (${stats.tokensSaved.toLocaleString()} tokens, ${stats.savingsRatio.toFixed(0)}%)`,
+      `Input: ${(stats.totalInputBytes / 1024).toFixed(1)} KB (${formatInteger(stats.totalInputTokens)} tokens)`,
+      `Output: ${(stats.totalOutputBytes / 1024).toFixed(1)} KB (${formatInteger(stats.totalOutputTokens)} tokens)`,
+      `Saved: ${(stats.bytesSaved / 1024).toFixed(1)} KB (${formatInteger(stats.tokensSaved)} tokens, ${stats.savingsRatio.toFixed(0)}%)`,
     ];
     if (stats.droppedEvents > 0) {
       lines.push(
