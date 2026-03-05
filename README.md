@@ -20,7 +20,7 @@
 
 ## Requirements
 
-- Node.js 18+
+- Node.js 20+
 - `npm` / `npx`
 - Optional: `codex` CLI for one-command Codex registration
 

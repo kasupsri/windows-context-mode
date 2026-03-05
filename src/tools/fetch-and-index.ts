@@ -144,7 +144,7 @@ async function fetchAndConvertToMarkdown(url: string): Promise<string> {
   const parsed = parseAndValidateUrl(url);
   await assertPublicFetchTarget(parsed);
 
-  // Use built-in fetch (Node 18+)
+  // Use built-in fetch (Node 20+)
   const serverVersion = process.env['npm_package_version'] ?? '0.1.0';
   const response = await fetch(parsed, {
     headers: {
