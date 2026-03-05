@@ -58,6 +58,14 @@ Policy sets are OS-aware:
 - The optimizer picks the smallest valid candidate under budget.
 - Session stats track processed responses, changed outputs, budget-forced responses, and token/byte savings.
 
+## Coding-Focused Token Saving
+
+- `proxy(read_file)` supports focused retrieval by line range, query-context windows, and cursor paging.
+- Large file content is cached in-memory with a stable `context_id` so follow-up calls can reuse content without resending it.
+- `read_symbols` and `read_references` provide structure-first navigation (symbol map + targeted snippets).
+- `diagnostics_focus` condenses build/lint/test output into unique issues.
+- `git_focus` converts broad diffs into file-level deltas with changed-symbol hints.
+
 ## Knowledge Base
 
 - `index` and `fetch_and_index` store chunked content in SQLite (FTS5 + BM25).

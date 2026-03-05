@@ -17,6 +17,10 @@ import { statsGetTool } from './tools/stats-get.js';
 import { statsResetTool } from './tools/stats-reset.js';
 import { statsExportTool } from './tools/stats-export.js';
 import { doctorTool } from './tools/doctor.js';
+import { readSymbolsTool } from './tools/read-symbols.js';
+import { readReferencesTool } from './tools/read-references.js';
+import { diagnosticsFocusTool } from './tools/diagnostics-focus.js';
+import { gitFocusTool } from './tools/git-focus.js';
 import { logger } from './utils/logger.js';
 import { optimizeResponse } from './compression/response-optimizer.js';
 import { statsTracker } from './utils/stats-tracker.js';
@@ -197,6 +201,87 @@ const TOOLS: Tool[] = [
       },
     },
   },
+  {
+    name: 'read_symbols',
+    description: 'Return compact symbol inventory (functions/classes/types) for a source file.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string' },
+        query: { type: 'string' },
+        kind: {
+          type: 'string',
+          enum: [
+            'all',
+            'function',
+            'class',
+            'interface',
+            'type',
+            'enum',
+            'const',
+            'method',
+            'struct',
+            'trait',
+          ],
+        },
+        max_symbols: { type: 'number' },
+        include_line_numbers: { type: 'boolean' },
+        max_output_tokens: { type: 'number' },
+      },
+      required: ['path'],
+    },
+  },
+  {
+    name: 'read_references',
+    description:
+      'Return query-focused reference snippets for a symbol from file path or cached context_id.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string' },
+        context_id: { type: 'string' },
+        symbol: { type: 'string' },
+        context_lines: { type: 'number' },
+        max_matches: { type: 'number' },
+        include_line_numbers: { type: 'boolean' },
+        case_sensitive: { type: 'boolean' },
+        whole_word: { type: 'boolean' },
+        max_output_tokens: { type: 'number' },
+      },
+      required: ['symbol'],
+    },
+  },
+  {
+    name: 'diagnostics_focus',
+    description: 'Normalize noisy build/lint/test logs into deduplicated error summaries.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        content: { type: 'string' },
+        format: { type: 'string', enum: ['auto', 'tsc', 'eslint', 'vitest', 'jest', 'generic'] },
+        max_items: { type: 'number' },
+        include_examples: { type: 'boolean' },
+        max_output_tokens: { type: 'number' },
+      },
+      required: ['content'],
+    },
+  },
+  {
+    name: 'git_focus',
+    description: 'Summarize changed files, symbols, and minimal hunks from git diff.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        repo_path: { type: 'string' },
+        base_ref: { type: 'string' },
+        scope: { type: 'string', enum: ['working', 'staged', 'unstaged'] },
+        max_files: { type: 'number' },
+        max_hunks_per_file: { type: 'number' },
+        include_hunks: { type: 'boolean' },
+        max_output_tokens: { type: 'number' },
+      },
+    },
+  },
 ];
 
 interface SchemaProperty {
@@ -244,6 +329,10 @@ const ULTRA_FIRST_TOOLS = new Set([
   'stats_get',
   'stats_reset',
   'stats_export',
+  'read_symbols',
+  'read_references',
+  'diagnostics_focus',
+  'git_focus',
 ]);
 
 function asObject(input: unknown): Record<string, unknown> {
@@ -446,6 +535,18 @@ export function createServer(): { server: Server; transport: StdioServerTranspor
           break;
         case 'doctor':
           result = doctorTool(typedArgs as Parameters<typeof doctorTool>[0]);
+          break;
+        case 'read_symbols':
+          result = await readSymbolsTool(typedArgs as Parameters<typeof readSymbolsTool>[0]);
+          break;
+        case 'read_references':
+          result = await readReferencesTool(typedArgs as Parameters<typeof readReferencesTool>[0]);
+          break;
+        case 'diagnostics_focus':
+          result = diagnosticsFocusTool(typedArgs as Parameters<typeof diagnosticsFocusTool>[0]);
+          break;
+        case 'git_focus':
+          result = await gitFocusTool(typedArgs as Parameters<typeof gitFocusTool>[0]);
           break;
         default:
           throw new Error(`Unhandled tool: ${toolName}`);

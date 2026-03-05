@@ -38,7 +38,11 @@ describe('MCP Protocol Compliance', () => {
     expect(names).toContain('stats_reset');
     expect(names).toContain('stats_export');
     expect(names).toContain('doctor');
-    expect(tools.length).toBe(11);
+    expect(names).toContain('read_symbols');
+    expect(names).toContain('read_references');
+    expect(names).toContain('diagnostics_focus');
+    expect(names).toContain('git_focus');
+    expect(tools.length).toBe(15);
   });
 
   it('each tool has required JSON schema', async () => {
@@ -287,6 +291,35 @@ describe('MCP Protocol Compliance', () => {
       {
         name: 'doctor',
         arguments: {
+          max_output_tokens: smallBudgetTokens,
+        },
+      },
+      {
+        name: 'read_symbols',
+        arguments: {
+          path: filePath,
+          max_output_tokens: smallBudgetTokens,
+        },
+      },
+      {
+        name: 'read_references',
+        arguments: {
+          path: filePath,
+          symbol: 'context',
+          max_output_tokens: smallBudgetTokens,
+        },
+      },
+      {
+        name: 'diagnostics_focus',
+        arguments: {
+          content: 'src/a.ts(1,1): error TS1000: boom',
+          max_output_tokens: smallBudgetTokens,
+        },
+      },
+      {
+        name: 'git_focus',
+        arguments: {
+          repo_path: process.cwd(),
           max_output_tokens: smallBudgetTokens,
         },
       },

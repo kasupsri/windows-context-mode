@@ -94,9 +94,23 @@ bash ./setup.sh
 - `stats_reset`: Reset in-memory session stats.
 - `stats_export`: Export stats JSON to disk.
 - `doctor`: Run runtime and safety diagnostics.
+- `read_symbols`: Extract compact symbol inventory from source files.
+- `read_references`: Retrieve symbol-focused snippets from files or cached `context_id`.
+- `diagnostics_focus`: Deduplicate and normalize noisy compiler/lint/test logs.
+- `git_focus`: Summarize changed files, symbols, and minimal hunks from git diff.
 
 All tools accept optional `max_output_tokens` and `response_mode` (`minimal` or `full`).
 `search` also accepts optional `compact` (defaults to compact output in minimal mode).
+
+### Token-Saving Coding Patterns
+
+- `proxy(read_file)` now supports selective retrieval:
+  - line ranges: `start_line`, `end_line`
+  - query windows: `query`, `context_lines`, `max_matches`
+  - cursor paging: `cursor`, `page_lines`, `next_cursor`
+  - cache handles: `context_id` and `return_context_id`
+- `read_symbols` + `read_references` let agents navigate large files without sending full file text.
+- `diagnostics_focus` and `git_focus` convert long logs/diffs into compact action-oriented summaries.
 
 ## Shell Runtime Resolution
 
